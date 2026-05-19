@@ -113,3 +113,40 @@
 3. "The OAuth proxy returns the access token in an HTML page that uses postMessage. If the window.opener check is missing or the origin isn't validated, this is a token exfiltration vector. Is the postMessage origin locked down?"
 4. "Decap's editorial workflow stores draft state as GitHub PR metadata. If the GitHub API rate limit is hit during a editing session, the author loses unsaved work. Is there any local persistence or recovery?"
 5. "The config.yml is committed to the repo and contains the repo name. A fork running their own instance needs to edit this file. But site.config.ts was supposed to be the single config source. Now there are two files to edit."
+
+## Phase 3 — Custom Processor Widget — 2026-05-19
+
+### What was delivered
+- Custom Decap CMS widget (`processor_image`) that replaces the default image widget for the pages collection
+- Widget runs the full 0.3MP pipeline (resize, quantize, Bayer, noise, bloom, JPEG encode) in-browser at upload time
+- Before/after preview shown inline in the editor
+- EXIF extraction (captured_at, GPS coords) displayed below the preview
+- Only the processed blob is committed (as base64 data URL passed to Decap's onChange)
+- exifr loaded from CDN in the admin HTML
+
+### What I'm uncertain about
+- The widget uses `window.createClass` which is Decap CMS's legacy React API. Decap 3.x may have changed this API. The widget may fail silently if `createClass` is not available on the window.
+- The processed image is passed to Decap as a base64 data URL via `props.onChange(dataUrl)`. This may not be the correct format Decap expects for file-type fields — it might expect a File object, a blob URL, or a path string. This needs testing with an actual Decap instance.
+- The auto-population of `captured_at` from EXIF attempts to call `props.onChange` with metadata, but Decap's widget API may not support setting other fields from within a widget. The EXIF data is at least displayed for manual copy.
+- The processor code is duplicated between `src/lib/processor/` and `public/admin/widgets/processor-widget.js`. These could drift apart if only one is updated.
+
+### What I cut corners on
+- Processor code is copy-pasted into the widget rather than shared via a build step. A bundler step (esbuild) would eliminate duplication but adds build complexity.
+- No automated test that the widget loads and registers correctly in Decap.
+- The widget doesn't handle re-processing — if you upload a second image, the first result is replaced but old blob URLs are not revoked (minor memory leak).
+- Error states are logged to console only, no user-visible error feedback in the widget.
+
+### What I'd do differently with hindsight
+1. Would test with a running Decap instance before committing the widget. The data format between widget and Decap's file handling is the highest-risk unknown.
+2. Would add an esbuild prebuild step to bundle the processor once and share it between the standalone harness and the widget.
+3. Would verify the `createClass` API availability in Decap 3.x before relying on it.
+
+### Open questions for the next phase
+- Phase 4 is linear walks polished end to end. This includes the walk listing, profile pages, mobile responsive, and the build-time indexer. The content-image duplication (content/ vs public/) needs resolution — should Phase 4 add a prebuild copy script?
+- The walk page template currently hardcodes `page-001` as the first page in the redirect. Should this be derived from the walk's content (first page sorted by ID)?
+
+### Red-team prompts
+1. "The widget passes a base64 data URL to Decap's onChange. A 640x480 JPEG at quality 65 is roughly 50-100KB. As base64, that's 70-140KB of string data. Decap will commit this as the frontmatter value. Is the frontmatter image field supposed to be a path to a file, not inline image data? This might produce a broken walk."
+2. "The processor is duplicated: src/lib/processor/ (ES modules, used by harness) and public/admin/widgets/processor-widget.js (IIFE, used by Decap). If someone fixes a bug in the Bayer simulation in one, the other stays broken. How is this caught?"
+3. "exifr is loaded from CDN (unpkg). If unpkg is down or blocked, the widget fails to extract EXIF but still processes the image. Is this degradation acceptable, or should exifr be bundled?"
+4. "The widget preview shows processed images at 300px max-width. The actual output is 640x480. The preview is too small to see Bayer fringing and noise artifacts — the defining characteristics of the processor. Can the author actually evaluate the processing result?"

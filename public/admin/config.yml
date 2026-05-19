@@ -51,7 +51,7 @@ collections:
       - { label: Page ID, name: id, widget: string, pattern: ['^page-[0-9]{3}$', 'must be page-001 format'] }
       - { label: Walk Author, name: walk_author, widget: string, hint: 'github handle of the walk author' }
       - { label: Walk Slug, name: walk_slug, widget: string, hint: 'slug of the parent walk' }
-      - { label: Image, name: image, widget: image }
+      - { label: Image, name: image, widget: processor_image }
       - { label: Image CID, name: image_cid, widget: string, required: false }
 - { label: Captured at, name: captured_at, widget: datetime }
       - { label: Next page, name: next, widget: string, required: false, hint: 'page ID of next page (linear walks)' }
