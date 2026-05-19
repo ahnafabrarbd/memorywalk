@@ -324,3 +324,32 @@
 1. "The semantic tokenizer splits on non-alpha characters. This means hyphenated words like 'bolt-cutters' become 'bolt' and 'cutters'. Numbers in content are stripped. Is this acceptable, or should hyphens within words be preserved?"
 2. "All three test walks are by the same author. Semantic collisions between walks by the same author may be less interesting than cross-author collisions. Should there be an option to filter self-author semantic collisions?"
 3. "The shared_words array is capped at 10 items. For walks with very similar content (same location revisited), there could be 50+ shared words. Showing only 10 hides the strength of the connection. Is the cap appropriate?"
+
+## Phase 9 — Deferred Signup Polish — 2026-05-19
+
+### What was delivered
+- "write your own" link at the bottom of every walk's final page, centered, monospace, subtle (#888 → #fff on hover)
+- Last-page detection works for all three structures: linear (no `next`), branching (no `links`), geo-anchored (no `next`)
+- Top bar shows conditional "write" link when Decap token is present in localStorage; also changes "log in" to the user's handle with a link to their profile
+- The "write" link in the top bar is hidden by default (per §5: "hidden for first-time visitors")
+
+### What I'm uncertain about
+- The Decap localStorage key (`netlify-cms-user`) stores a `name` property that I use as the GitHub handle. This may not always match the GitHub username — Decap might store the display name instead. Needs testing with actual Decap login.
+- The "write" link goes to `/admin` (the Decap CMS). Per §5, clicking "write your own" should put the user "directly into a blank new-walk editor." The current flow goes to the Decap dashboard, not a pre-populated new entry form. A deep link like `/admin/#/collections/walks/new` might work but Decap's URL routing for new entries is fragile.
+
+### What I cut corners on
+- No custom onboarding page between the "write your own" link and Decap. The user goes directly to `/admin`.
+- The conditional "write" link uses localStorage detection, not a real auth check. If the token is expired, the link still shows.
+- No empty-state illustrations or special treatment — just text ("no walks yet", "none yet").
+
+### What I'd do differently with hindsight
+1. Would test the Decap deep link for new walk creation (`/admin/#/collections/walks/new`) to skip the dashboard.
+2. Would add a brief intermediary page at `/contribute` that explains the process before sending the user to Decap.
+
+### Open questions for the next phase
+- Phase 10 (IPFS) and Phase 11 (self-hosting polish) remain. Phase 10 requires a pinning service account (Pinata or IPFS.NINJA). Should I proceed with the implementation using Pinata's free tier, or stub the GitHub Action?
+
+### Red-team prompts
+1. "The 'write your own' link appears on every walk's final page. But the brief says 'the way to discover authorship is to follow another author into it.' If the link is on every final page, it's discoverable without following anyone — just by reading any walk to the end. Is this too easy?"
+2. "The top bar 'write' link appears based on localStorage state, which persists across sessions. Once logged in, the link always shows. But the brief says 'hidden for first-time visitors' — not 'hidden until login.' A returning visitor who logged in once to read (not write) would see the write link. Is this the intended behavior?"
+3. "The authLink changes to the user's handle and links to `/people/[handle]`. But if the user hasn't created a profile yet (they just logged in), this links to a 404. Should the link go to a profile creation page instead?"

@@ -13,7 +13,11 @@ import { siteConfig } from "../../../site.config";
   <span class="topbar-sep">&middot;</span>
   <a href="/people">people</a>
   <span class="topbar-sep">&middot;</span>
-  <a href="/admin">log in</a>
+  <a href="/admin" id="authLink">log in</a>
+  <a href="/admin" id="writeLink" class="write-link" style="display:none;">
+    <span class="topbar-sep">&middot;</span>
+    write
+  </a>
 </nav>
 
 <style>
@@ -34,4 +38,30 @@ import { siteConfig } from "../../../site.config";
   .topbar-sep {
     margin: 0 0.25rem;
   }
+
+  .write-link {
+    display: none;
+  }
 </style>
+
+<script>
+  const authLink = document.getElementById("authLink") as HTMLAnchorElement;
+  const writeLink = document.getElementById("writeLink") as HTMLAnchorElement;
+
+  try {
+    const stored = localStorage.getItem("netlify-cms-user");
+    if (stored) {
+      const user = JSON.parse(stored);
+      if (user.token) {
+        // Logged in: show handle and write link
+        if (user.name) {
+          authLink.textContent = user.name;
+          authLink.href = `/people/${user.name}`;
+        }
+        writeLink.style.display = "inline";
+      }
+    }
+  } catch {
+    // Not logged in — defaults are fine
+  }
+</script>

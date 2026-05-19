@@ -87,6 +87,12 @@ if (page.body) {
 
 const imagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
 const walkTitle = walk?.data.title ?? "untitled walk";
+
+// Determine if this is the final page (for "write your own" link)
+const isLastPage =
+  (structure === "linear" || structure === "geo-anchored")
+    ? !page.data.next
+    : (structure === "branching" ? !page.data.links || page.data.links.length === 0 : false);
 ---
 
 <Reader title={`${walkTitle} — ${page.data.id}`}>
@@ -133,6 +139,12 @@ const walkTitle = walk?.data.title ?? "untitled walk";
       <span class="branch-meta">{page.data.id}</span>
     </div>
   )}
+
+  {isLastPage && (
+    <div class="write-own">
+      <a href="/admin">write your own</a>
+    </div>
+  )}
 </Reader>
 
 <style>
@@ -157,6 +169,23 @@ const walkTitle = walk?.data.title ?? "untitled walk";
 
   .branch-link.visited {
     color: var(--color-meta);
+  }
+
+  .write-own {
+    width: 100%;
+    max-width: var(--measure);
+    margin-top: 3rem;
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+  }
+
+  .write-own a {
+    color: var(--color-meta);
+  }
+
+  .write-own a:hover {
+    color: var(--color-text);
   }
 
   .branch-meta {
