@@ -291,3 +291,36 @@
 2. "The token from localStorage could be expired. The page doesn't handle 401 responses from the GitHub API gracefully. What does the user see when their token has expired?"
 3. "curators.json is a public static file. Anyone can read the list of curator handles. The brief says the curator role is 'administrative-only; never appears as a label on any user's profile or content.' But the curator list is publicly accessible at /curators.json. Is this a spec violation?"
 4. "The string replacement approach for updating frontmatter will break on walks where curated is not explicitly set (relies on default value) or where the YAML uses `true`/`True`/`yes` variants. How many edge cases does this create?"
+
+## Phase 8 — Temporal + Semantic Collisions — 2026-05-19
+
+### What was delivered
+- Temporal collisions: geographic precondition (50m) + captured_at >24h apart, rendered as dashed lines on nexus map with time-apart tooltip
+- Semantic collisions: walks sharing >=3 non-stopword content words, surfaced as "threads" list below the map with shared word detail
+- Standard English stopword list (120+ words) in `src/lib/collisions/stopwords.ts`
+- Basic tokenizer: lowercase, split on non-alpha, filter words <=2 chars and stopwords, deduplicate
+- Nexus filter panel updated with geographic, temporal, and semantic toggles
+- collisions.json now includes all three collision types
+
+### What I'm uncertain about
+- The semantic collision threshold of >=3 shared words produces connections between all three test walks. With real content, this threshold may be too low (producing too many connections) or the stopword list may be too aggressive. Tuning requires real data.
+- The "threads" overlay is a list below the map. The spec (§9) says "surfaced as 'threads' overlay (list), not map lines" — an overlay could mean a panel on top of the map rather than below it. Current implementation puts it below.
+- Word matching is exact string match, not lemma matching. "walking" and "walk" are different words. The spec says "shared non-stopword content lemmas" — true lemmatization would require an NLP library which §9 prohibits.
+
+### What I cut corners on
+- No lemmatization — exact word matching only. "walks" and "walking" won't match "walk".
+- The stopword list is hand-curated. It may miss domain-specific common words ("along", "back", "came") that would be noise in psychogeography text.
+- Semantic collisions use concatenated page body text. Markdown syntax (links, emphasis markers) is included in the token pool.
+
+### What I'd do differently with hindsight
+1. Would add a basic stemmer (Porter stemmer is ~50 lines, no library needed) to approximate lemmatization per the spec.
+2. Would tune the semantic threshold with more than three test walks to see how the connection density scales.
+3. Would place the threads list as a toggleable panel overlaying the map rather than below it.
+
+### Open questions for the next phase
+- Phase 9 is deferred-signup polish. The "write your own" link on the final page of each walk needs to work with Decap's open authoring. Should it link directly to `/admin/#/collections/pages/new`? Or to a custom onboarding page?
+
+### Red-team prompts
+1. "The semantic tokenizer splits on non-alpha characters. This means hyphenated words like 'bolt-cutters' become 'bolt' and 'cutters'. Numbers in content are stripped. Is this acceptable, or should hyphens within words be preserved?"
+2. "All three test walks are by the same author. Semantic collisions between walks by the same author may be less interesting than cross-author collisions. Should there be an option to filter self-author semantic collisions?"
+3. "The shared_words array is capped at 10 items. For walks with very similar content (same location revisited), there could be 50+ shared words. Showing only 10 hides the strength of the connection. Is the cap appropriate?"

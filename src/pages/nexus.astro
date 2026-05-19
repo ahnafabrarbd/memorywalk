@@ -11,8 +11,22 @@ import List from "../layouts/List.astro";
         <input type="checkbox" id="filterGeo" checked />
         geographic
       </label>
+      <span class="control-sep">&middot;</span>
+      <label class="filter-toggle">
+        <input type="checkbox" id="filterTemporal" checked />
+        temporal
+      </label>
+      <span class="control-sep">&middot;</span>
+      <label class="filter-toggle">
+        <input type="checkbox" id="filterSemantic" checked />
+        semantic
+      </label>
     </div>
     <div id="nexusMap" class="nexus-map"></div>
+    <div id="threadsPanel" class="threads-panel" style="display:none;">
+      <h2 class="threads-heading">threads</h2>
+      <ul id="threadsList" class="threads-list"></ul>
+    </div>
   </div>
 </List>
 
@@ -29,6 +43,7 @@ import List from "../layouts/List.astro";
     display: flex;
     align-items: center;
     gap: 0.5rem;
+    flex-wrap: wrap;
   }
 
   .control-label {
@@ -53,9 +68,41 @@ import List from "../layouts/List.astro";
 
   .nexus-map {
     width: 100%;
-    height: calc(100vh - 8rem);
-    min-height: 400px;
+    height: calc(100vh - 12rem);
+    min-height: 300px;
     border: 1px solid var(--color-rule);
+  }
+
+  .threads-panel {
+    margin-top: 1.5rem;
+  }
+
+  .threads-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-meta);
+    margin-bottom: 0.75rem;
+  }
+
+  .threads-list {
+    list-style: none;
+  }
+
+  .threads-list :global(li) {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    font-size: var(--size-sm);
+  }
+
+  .threads-list :global(.thread-walks) {
+    color: var(--color-text);
+  }
+
+  .threads-list :global(.thread-detail) {
+    font-family: var(--font-mono);
+    color: var(--color-meta);
+    font-size: var(--size-sm);
   }
 </style>
 
@@ -74,15 +121,40 @@ import List from "../layouts/List.astro";
     }[];
   }
 
+  interface CollisionRef {
+    walkAuthor: string;
+    walkSlug: string;
+    walkTitle: string;
+    pageId: string;
+  }
+
   interface GeoCollision {
-    type: string;
-    a: { walkAuthor: string; walkSlug: string; walkTitle: string; pageId: string };
-    b: { walkAuthor: string; walkSlug: string; walkTitle: string; pageId: string };
+    type: "geographic";
+    a: CollisionRef;
+    b: CollisionRef;
     distance_m: number;
+  }
+
+  interface TemporalCollision {
+    type: "temporal";
+    a: CollisionRef;
+    b: CollisionRef;
+    distance_m: number;
+    time_apart_h: number;
+  }
+
+  interface SemanticCollision {
+    type: "semantic";
+    a: { walkAuthor: string; walkSlug: string; walkTitle: string };
+    b: { walkAuthor: string; walkSlug: string; walkTitle: string };
+    shared_tags: string[];
+    shared_words: string[];
   }
 
   interface CollisionsData {
     geographic: GeoCollision[];
+    temporal: TemporalCollision[];
+    semantic: SemanticCollision[];
   }
 
   const map = L.map("nexusMap", {
@@ -92,33 +164,16 @@ import List from "../layouts/List.astro";
 
   L.tileLayer(
     "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
-    {
-      maxZoom: 19,
-    },
+    { maxZoom: 19 },
   ).addTo(map);
 
-  // Add small attribution
   L.control.attribution({ prefix: false, position: "bottomright" })
     .addAttribution('&copy; <a href="https://carto.com/">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>')
     .addTo(map);
 
-  const dotOptions: L.CircleMarkerOptions = {
-    radius: 4,
-    fillColor: "#fff",
-    fillOpacity: 0.5,
-    stroke: false,
-  };
+  const geoLines: L.Polyline[] = [];
+  const temporalLines: L.Polyline[] = [];
 
-  const lineOptions: L.PolylineOptions = {
-    color: "#fff",
-    opacity: 0.3,
-    weight: 1,
-  };
-
-  const dots: L.CircleMarker[] = [];
-  const collisionLines: L.Polyline[] = [];
-
-  // Fetch data
   Promise.all([
     fetch("/walks-index.json").then((r) => r.json()) as Promise<WalkIndexEntry[]>,
     fetch("/collisions.json").then((r) => r.json()) as Promise<CollisionsData>,
@@ -133,7 +188,12 @@ import List from "../layouts/List.astro";
         const key = `${walk.author}/${walk.slug}/${page.id}`;
         coordMap.set(key, page.coords);
 
-        const dot = L.circleMarker(page.coords, dotOptions)
+        L.circleMarker(page.coords, {
+          radius: 4,
+          fillColor: "#fff",
+          fillOpacity: 0.5,
+          stroke: false,
+        })
           .bindPopup(
             `<span style="font-family:monospace;font-size:12px;color:#fff;background:#000;padding:2px 4px;">${walk.title} — ${page.id}</span>`,
             { className: "nexus-popup" },
@@ -143,48 +203,91 @@ import List from "../layouts/List.astro";
           })
           .addTo(map);
 
-        dots.push(dot);
         bounds.push(page.coords);
       }
     }
 
-    // Draw collision lines
+    // Geographic collision lines (solid)
     for (const c of collisions.geographic) {
-      const aKey = `${c.a.walkAuthor}/${c.a.walkSlug}/${c.a.pageId}`;
-      const bKey = `${c.b.walkAuthor}/${c.b.walkSlug}/${c.b.pageId}`;
-      const aCoords = coordMap.get(aKey);
-      const bCoords = coordMap.get(bKey);
+      const aCoords = coordMap.get(`${c.a.walkAuthor}/${c.a.walkSlug}/${c.a.pageId}`);
+      const bCoords = coordMap.get(`${c.b.walkAuthor}/${c.b.walkSlug}/${c.b.pageId}`);
       if (!aCoords || !bCoords) continue;
 
-      const line = L.polyline([aCoords, bCoords], lineOptions)
-        .bindTooltip(
-          `${c.a.walkTitle} — ${c.b.walkTitle} (${c.distance_m}m)`,
-          {
-            className: "nexus-tooltip",
-            sticky: true,
-          },
-        )
+      const line = L.polyline([aCoords, bCoords], { color: "#fff", opacity: 0.3, weight: 1 })
+        .bindTooltip(`${c.a.walkTitle} — ${c.b.walkTitle} (${c.distance_m}m)`, {
+          className: "nexus-tooltip",
+          sticky: true,
+        })
         .addTo(map);
-
-      collisionLines.push(line);
+      geoLines.push(line);
     }
 
-    // Fit bounds if we have dots
+    // Temporal collision lines (dashed)
+    for (const c of collisions.temporal) {
+      const aCoords = coordMap.get(`${c.a.walkAuthor}/${c.a.walkSlug}/${c.a.pageId}`);
+      const bCoords = coordMap.get(`${c.b.walkAuthor}/${c.b.walkSlug}/${c.b.pageId}`);
+      if (!aCoords || !bCoords) continue;
+
+      const line = L.polyline([aCoords, bCoords], {
+        color: "#fff",
+        opacity: 0.3,
+        weight: 1,
+        dashArray: "4 4",
+      })
+        .bindTooltip(`${c.a.walkTitle} — ${c.b.walkTitle} (${c.time_apart_h}h apart)`, {
+          className: "nexus-tooltip",
+          sticky: true,
+        })
+        .addTo(map);
+      temporalLines.push(line);
+    }
+
+    // Semantic threads (list, not map lines)
+    const threadsList = document.getElementById("threadsList")!;
+    const threadsPanel = document.getElementById("threadsPanel")!;
+
+    if (collisions.semantic.length > 0) {
+      threadsPanel.style.display = "block";
+      for (const c of collisions.semantic) {
+        const li = document.createElement("li");
+        const detail = [];
+        if (c.shared_tags.length > 0) detail.push(`tags: ${c.shared_tags.map((t) => "#" + t).join(" ")}`);
+        if (c.shared_words.length > 0) detail.push(`words: ${c.shared_words.join(", ")}`);
+
+        li.innerHTML = `
+          <span class="thread-walks">
+            <a href="/walk/${c.a.walkAuthor}/${c.a.walkSlug}">${c.a.walkTitle}</a>
+            &mdash;
+            <a href="/walk/${c.b.walkAuthor}/${c.b.walkSlug}">${c.b.walkTitle}</a>
+          </span>
+          <br>
+          <span class="thread-detail">${detail.join(" · ")}</span>
+        `;
+        threadsList.appendChild(li);
+      }
+    }
+
     if (bounds.length > 0) {
       map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40] });
     }
   });
 
-  // Filter toggle
+  // Filter toggles
   const filterGeo = document.getElementById("filterGeo") as HTMLInputElement;
+  const filterTemporal = document.getElementById("filterTemporal") as HTMLInputElement;
+  const filterSemantic = document.getElementById("filterSemantic") as HTMLInputElement;
+
   filterGeo.addEventListener("change", () => {
-    collisionLines.forEach((line) => {
-      if (filterGeo.checked) {
-        line.addTo(map);
-      } else {
-        line.remove();
-      }
-    });
+    geoLines.forEach((l) => filterGeo.checked ? l.addTo(map) : l.remove());
+  });
+
+  filterTemporal.addEventListener("change", () => {
+    temporalLines.forEach((l) => filterTemporal.checked ? l.addTo(map) : l.remove());
+  });
+
+  filterSemantic.addEventListener("change", () => {
+    const panel = document.getElementById("threadsPanel")!;
+    panel.style.display = filterSemantic.checked && panel.querySelector("li") ? "block" : "none";
   });
 </script>
 
