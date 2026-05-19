@@ -537,3 +537,27 @@ The original Phase 0 visual register failed. Specifically:
 - Sketch editor at `/write/[slug]/sketch`: click to place nodes, drag between nodes to create edges (quadratic bezier with perpendicular offset), right-click to edit label/link page/delete, saves to localStorage
 - Hand-drawn edge feel via bezier curves with 8px perpendicular control point offset
 - Both surfaces use the shader background, matching the site's visual register
+
+## Phases 5–9 — Structures, Map, Collisions, IPFS — 2026-05-19
+
+### What was delivered
+- All three walk structures (linear, branching, geo-anchored) plus sketch rendering in the new visual register
+- Sketch link on first page of every walk, geo coordinate indicators on geo-anchored pages
+- Nexus map rebuilt with Leaflet + CARTO dark tiles, red accent dots (#ff3b3b), all three collision types
+- Semantic threads list below the map with shared tags/words
+- IPFS replication carried forward: GitHub Action, gateway+fallback image loading, feature-flagged
+- 25 pages, sub-1s build
+
+### Summary of all phases delivered (post-pivot)
+| Phase | Status |
+|---|---|
+| 0 (redo) | Maximalist net-art register, WebGL shader, Space Grotesk, vivid palette |
+| 1 | 0.3MP processor (carried forward from original) |
+| 2 | Front-page straw.page-style editor at /write/new |
+| 3 | Indexer endpoints, linear walks polished |
+| 4 | Node-graph sketch tool (editor + reader) |
+| 5 | Branching + geo-anchored structures, sketch links |
+| 6 | Nexus map with Leaflet (pending Weather Journal replacement) |
+| 7 | Geographic collisions on map |
+| 8 | Temporal + semantic collisions, threads overlay |
+| 9 | IPFS replication (carried forward) |
