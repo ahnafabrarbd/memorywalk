@@ -388,3 +388,36 @@
 1. "The action commits back to main with github-actions[bot]. These commits will trigger the action again (push to main, paths include content/walks/). Is there an infinite loop? The changed files in the CID-update commit are .md files (frontmatter), not .jpg — so the path filter should prevent re-triggering. But verify this."
 2. "The onerror fallback uses inline JS. If the site adds a Content-Security-Policy header (which it should, per §11 no third-party scripts), this inline handler will be blocked. Should use an external script instead."
 3. "IPFS gateway URLs can be slow or unreachable. The user sees a broken image while waiting for the gateway timeout before the onerror fallback fires. This could be 10+ seconds. Should the local image load first, with IPFS as a verification layer rather than primary source?"
+
+## Phase 11 — Self-Hosting Polish — 2026-05-19
+
+### What was delivered
+- Complete `SELFHOSTING.md` with 10-step guide: fork, configure site.config.ts, update Decap config, set up GitHub OAuth app, deploy Cloudflare Worker, configure curators, deploy to static host, remove test content, optionally enable IPFS, verify
+- CI build workflow (`build.yml`): runs `npm ci && npm run build` on push/PR to main
+- "What lives where" table mapping files to purposes
+- Troubleshooting section covering common issues
+
+### What I'm uncertain about
+- The self-hosting guide hasn't been tested by actually forking the repo and following every step. Some steps (especially the Cloudflare Worker deployment and GitHub OAuth app callback URL configuration) may have subtle gotchas not covered.
+- The guide tells users to `cp curators.json public/curators.json`. This should be automated (prebuild script or build integration) rather than manual. If the user forgets, the curate page won't gate access.
+- Step 3 (update config.yml) requires the user to know the Worker URL before deploying it (step 5). The ordering creates a chicken-and-egg situation — they need to deploy the Worker first to get the URL, then update config.yml, then deploy the site.
+
+### What I cut corners on
+- Didn't actually fork and test the guide. Documented from code review.
+- The `curators.json` → `public/curators.json` copy is still manual, not automated in the prebuild script.
+- No Dockerfile or docker-compose for fully self-contained deployment.
+- The build.yml workflow doesn't deploy — it just verifies the build. Deployment is left to the hosting provider's integration.
+
+### What I'd do differently with hindsight
+1. Would reorder the guide to deploy the Worker first (step 4 → step 3), then configure config.yml with the known Worker URL.
+2. Would automate the curators.json copy in the prebuild script.
+3. Would test the guide by actually forking the repo and following every step, documenting friction in this critique.
+
+### Open questions (project complete)
+- All 12 phases (0–11) are delivered. The project is a working, deployable static site.
+- Key areas for future improvement: real 0.3MP Camera reference comparison, end-to-end Decap testing with actual OAuth, branching walk inline links in prose, stemmer for semantic collisions.
+
+### Red-team prompts
+1. "The SELFHOSTING guide says 'edit site.config.ts — this is the single file that defines your instance.' But the user also needs to edit config.yml (repo name, OAuth URL) and curators.json. That's three files, not one. The 'single config file' promise from §12 is broken."
+2. "The build.yml CI workflow runs on PRs from forks (via open authoring). A malicious PR could modify the build workflow itself, or add scripts to package.json, and the CI would execute them. Should the workflow only run on trusted branches?"
+3. "There's no automated test that verifies the site works correctly. The build succeeds, but there's no check that walk pages render, that the nexus map has correct data, or that the collisions computation is valid. What's the testing story?"
