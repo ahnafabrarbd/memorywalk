@@ -257,3 +257,37 @@
 2. "The mini-map loads Leaflet. Every geo-anchored page now includes the Leaflet JS bundle. Is this code-split per page, or does the bundle get loaded even on linear walk pages? Check the actual build output."
 3. "SessionStorage is per-origin and per-tab. If a user opens two branching walks from the same site in different tabs, they have independent visited sets. But if they open the same walk in two tabs, both tabs share the visited set via sessionStorage. Is this the intended behavior?"
 4. "The geo-anchored walk test data places three points along the Embarcadero. These points are ~200-300m apart. The mini-map at 180px height will show them as closely spaced dots. Does the fitBounds calculation produce a useful zoom level, or does it zoom too far out?"
+
+## Phase 7 — Curator Surface — 2026-05-19
+
+### What was delivered
+- `/admin/curate` page listing all published walks with curate/uncurate toggle buttons
+- Access gated by `curators.json`: page fetches GitHub user via Decap's stored token, checks handle against the curator list
+- Toggle commits `curated: true/false` and `curated_at` changes directly to walk.md via the GitHub API
+- `curators.json` served as a static file from `public/`
+- No "curator" label appears in any public UI (per §10)
+
+### What I'm uncertain about
+- The token is read from `localStorage["netlify-cms-user"]`. This is Decap CMS's internal storage key and could change between Decap versions. There's no stable API for reading the auth token.
+- The GitHub API content update uses `atob`/`btoa` for base64 encoding/decoding. This breaks for content with non-ASCII characters (e.g., Unicode in walk titles or bodies). Should use `TextEncoder`/`TextDecoder` with proper UTF-8 handling.
+- The curate page uses simple string replacement (`curated: false` → `curated: true`) on the raw frontmatter. This is fragile — it assumes specific formatting and will break if YAML is reformatted or uses different quoting.
+
+### What I cut corners on
+- No YAML parser for the frontmatter update. Using regex string replacement instead, which is brittle.
+- `curators.json` is manually copied to `public/`. Should be part of the prebuild script or served via an Astro endpoint.
+- No confirmation dialog before curating/uncurating.
+- The curate page is a static build — the walk list is baked at build time. If a new walk is published between builds, it won't appear on the curate page until the next build.
+
+### What I'd do differently with hindsight
+1. Would use a proper YAML parser (js-yaml) to parse and re-serialize the frontmatter instead of string replacement.
+2. Would use `TextEncoder`/`TextDecoder` for base64 operations to handle UTF-8 content correctly.
+3. Would serve `curators.json` via an Astro endpoint rather than a static copy.
+
+### Open questions for the next phase
+- Phase 8 is temporal + semantic collisions. The semantic collision spec (§9) calls for "basic tokenizer (no NLP libs)" with lemma matching. How aggressive should the stopword list be? Should I use a standard English stopword list or a minimal custom one?
+
+### Red-team prompts
+1. "The curate toggle modifies walk.md directly on the main branch via GitHub API. There's no PR, no review, no audit trail beyond the git commit. A curator can silently curate/uncurate any walk. Is this intentional or a gap in the editorial workflow?"
+2. "The token from localStorage could be expired. The page doesn't handle 401 responses from the GitHub API gracefully. What does the user see when their token has expired?"
+3. "curators.json is a public static file. Anyone can read the list of curator handles. The brief says the curator role is 'administrative-only; never appears as a label on any user's profile or content.' But the curator list is publicly accessible at /curators.json. Is this a spec violation?"
+4. "The string replacement approach for updating frontmatter will break on walks where curated is not explicitly set (relies on default value) or where the YAML uses `true`/`True`/`yes` variants. How many edge cases does this create?"
