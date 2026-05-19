@@ -1,0 +1,512 @@
+---
+import "../../components/shared/tokens.css";
+import ShaderBackground from "../../components/shared/ShaderBackground.astro";
+import { siteConfig } from "../../../site.config";
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>new walk — {siteConfig.name}</title>
+    <style>
+      body {
+        padding: 0 1rem;
+        min-height: 100vh;
+      }
+
+      .editor {
+        max-width: 720px;
+        margin: 0 auto;
+        padding-top: 2rem;
+        padding-bottom: 6rem;
+        position: relative;
+        z-index: 1;
+      }
+
+      .editor-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 2rem;
+      }
+
+      .back-link {
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--color-dim);
+      }
+
+      .back-link:hover { color: var(--color-accent-red); }
+
+      .publish-btn {
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: #000;
+        background: var(--color-accent-green);
+        border: none;
+        padding: 0.5rem 1.25rem;
+        cursor: pointer;
+        transition: opacity 150ms;
+      }
+
+      .publish-btn:hover { opacity: 0.85; }
+      .publish-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+      .title-input {
+        width: 100%;
+        font-family: var(--font-display);
+        font-size: var(--size-title-walk);
+        font-weight: 700;
+        color: var(--color-text);
+        background: transparent;
+        border: none;
+        outline: none;
+        margin-bottom: 1.5rem;
+      }
+
+      .title-input::placeholder {
+        color: var(--color-dim);
+      }
+
+      .meta-toggle {
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-dim);
+        cursor: pointer;
+        border: none;
+        background: none;
+        margin-bottom: 1rem;
+        display: block;
+      }
+
+      .meta-toggle:hover { color: var(--color-accent-blue); }
+
+      .meta-panel {
+        display: none;
+        margin-bottom: 2rem;
+        padding: 1rem;
+        border: 1px solid rgba(255,59,59,0.3);
+      }
+
+      .meta-panel.open { display: block; }
+
+      .meta-field {
+        margin-bottom: 0.75rem;
+      }
+
+      .meta-field label {
+        display: block;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-accent-green);
+        margin-bottom: 0.25rem;
+      }
+
+      .meta-field input,
+      .meta-field select {
+        width: 100%;
+        max-width: 300px;
+        background: rgba(0,0,0,0.5);
+        color: var(--color-text);
+        border: 1px solid rgba(255,59,59,0.3);
+        font-family: var(--font-body);
+        font-size: var(--size-label);
+        padding: 0.4rem 0.6rem;
+      }
+
+      .blocks {
+        min-height: 200px;
+      }
+
+      .block {
+        margin-bottom: 1rem;
+        position: relative;
+      }
+
+      .block-text {
+        width: 100%;
+        min-height: 2em;
+        font-family: var(--font-body);
+        font-size: var(--size-body);
+        line-height: var(--leading);
+        color: var(--color-text);
+        background: transparent;
+        border: none;
+        outline: none;
+        resize: none;
+        overflow: hidden;
+      }
+
+      .block-text:focus {
+        border-left: 2px solid var(--color-accent-red);
+        padding-left: 0.75rem;
+      }
+
+      .block-text::placeholder {
+        color: var(--color-dim);
+      }
+
+      .block-image {
+        width: 100%;
+        max-width: var(--image-width);
+        display: block;
+      }
+
+      .block-image-container {
+        position: relative;
+      }
+
+      .block-image-container .processing-overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.7);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-accent-yellow);
+      }
+
+      .drop-zone {
+        border: 1px dashed var(--color-dim);
+        padding: 2rem;
+        text-align: center;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-dim);
+        cursor: pointer;
+        margin-bottom: 1rem;
+        position: relative;
+        transition: border-color 150ms;
+      }
+
+      .drop-zone:hover,
+      .drop-zone.dragover {
+        border-color: var(--color-accent-green);
+        color: var(--color-accent-green);
+      }
+
+      .drop-zone input {
+        position: absolute;
+        inset: 0;
+        opacity: 0;
+        cursor: pointer;
+      }
+
+      .page-break {
+        text-align: center;
+        padding: 1rem 0;
+        margin: 1rem 0;
+        border-top: 1px dashed var(--color-accent-red);
+        border-bottom: 1px dashed var(--color-accent-red);
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        color: var(--color-accent-red);
+      }
+
+      .add-page-btn {
+        display: block;
+        width: 100%;
+        text-align: center;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--color-dim);
+        border: 1px dashed var(--color-dim);
+        background: none;
+        padding: 0.75rem;
+        cursor: pointer;
+        margin-top: 2rem;
+        transition: all 150ms;
+      }
+
+      .add-page-btn:hover {
+        color: var(--color-accent-green);
+        border-color: var(--color-accent-green);
+      }
+
+      .status {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        color: var(--color-dim);
+        z-index: 20;
+      }
+    </style>
+  </head>
+  <body>
+    <ShaderBackground />
+    <div class="editor">
+      <div class="editor-header">
+        <a href="/write" class="back-link">back</a>
+        <button class="publish-btn" id="publishBtn" disabled>publish</button>
+      </div>
+
+      <input
+        type="text"
+        class="title-input"
+        id="titleInput"
+        placeholder="untitled walk"
+        autocomplete="off"
+      />
+
+      <button class="meta-toggle" id="metaToggle">metadata</button>
+      <div class="meta-panel" id="metaPanel">
+        <div class="meta-field">
+          <label>slug</label>
+          <input type="text" id="slugInput" placeholder="my-walk" />
+        </div>
+        <div class="meta-field">
+          <label>structure</label>
+          <select id="structureSelect">
+            <option value="linear">linear</option>
+            <option value="branching">branching</option>
+            <option value="geo-anchored">geo-anchored</option>
+            <option value="sketch">sketch</option>
+          </select>
+        </div>
+        <div class="meta-field">
+          <label>tags (comma separated)</label>
+          <input type="text" id="tagsInput" placeholder="urban, night" />
+        </div>
+      </div>
+
+      <div class="blocks" id="blocks">
+        <div class="block" data-page="1">
+          <div class="drop-zone" data-page="1">
+            <span>drop image</span>
+            <input type="file" accept="image/*" />
+          </div>
+          <textarea
+            class="block-text"
+            placeholder="start writing..."
+            rows="3"
+          ></textarea>
+        </div>
+      </div>
+
+      <button class="add-page-btn" id="addPageBtn">+ new page</button>
+    </div>
+
+    <div class="status" id="status"></div>
+
+    <script>
+      import { processImage } from "../../lib/processor/index";
+
+      let pageCount = 1;
+      const blocks = document.getElementById("blocks")!;
+      const titleInput = document.getElementById("titleInput") as HTMLInputElement;
+      const slugInput = document.getElementById("slugInput") as HTMLInputElement;
+      const publishBtn = document.getElementById("publishBtn") as HTMLButtonElement;
+      const metaToggle = document.getElementById("metaToggle") as HTMLButtonElement;
+      const metaPanel = document.getElementById("metaPanel")!;
+      const statusEl = document.getElementById("status")!;
+      const addPageBtn = document.getElementById("addPageBtn") as HTMLButtonElement;
+
+      // Auto-generate slug from title
+      titleInput.addEventListener("input", () => {
+        if (!slugInput.dataset.manual) {
+          slugInput.value = titleInput.value
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, "-")
+            .replace(/^-|-$/g, "");
+        }
+        publishBtn.disabled = !titleInput.value.trim();
+        autosave();
+      });
+
+      slugInput.addEventListener("input", () => {
+        slugInput.dataset.manual = "true";
+        autosave();
+      });
+
+      metaToggle.addEventListener("click", () => {
+        metaPanel.classList.toggle("open");
+      });
+
+      // Auto-resize textareas
+      function autoResize(el: HTMLTextAreaElement) {
+        el.style.height = "auto";
+        el.style.height = el.scrollHeight + "px";
+      }
+
+      blocks.addEventListener("input", (e) => {
+        const target = e.target as HTMLElement;
+        if (target.classList.contains("block-text")) {
+          autoResize(target as HTMLTextAreaElement);
+          autosave();
+        }
+      });
+
+      // Drop zone handling
+      blocks.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        const dz = (e.target as HTMLElement).closest(".drop-zone");
+        if (dz) dz.classList.add("dragover");
+      });
+
+      blocks.addEventListener("dragleave", (e) => {
+        const dz = (e.target as HTMLElement).closest(".drop-zone");
+        if (dz) dz.classList.remove("dragover");
+      });
+
+      blocks.addEventListener("drop", async (e) => {
+        e.preventDefault();
+        const dz = (e.target as HTMLElement).closest(".drop-zone") as HTMLElement;
+        if (!dz) return;
+        dz.classList.remove("dragover");
+        const file = e.dataTransfer?.files[0];
+        if (file) await handleImage(file, dz);
+      });
+
+      blocks.addEventListener("change", async (e) => {
+        const input = e.target as HTMLInputElement;
+        if (input.type === "file" && input.files?.[0]) {
+          const dz = input.closest(".drop-zone") as HTMLElement;
+          if (dz) await handleImage(input.files[0], dz);
+        }
+      });
+
+      async function handleImage(file: File, dropZone: HTMLElement) {
+        const container = document.createElement("div");
+        container.className = "block-image-container";
+
+        const overlay = document.createElement("div");
+        overlay.className = "processing-overlay";
+        overlay.textContent = "processing...";
+
+        // Show original as placeholder
+        const img = document.createElement("img");
+        img.className = "block-image";
+        img.src = URL.createObjectURL(file);
+
+        container.appendChild(img);
+        container.appendChild(overlay);
+        dropZone.replaceWith(container);
+
+        try {
+          const processed = await processImage(file);
+          const procUrl = URL.createObjectURL(processed);
+          img.src = procUrl;
+          overlay.remove();
+
+          // Store blob for publishing
+          (container as any)._blob = processed;
+          (container as any)._filename = file.name.replace(/\.[^.]+$/, ".jpg");
+          autosave();
+        } catch (err) {
+          overlay.textContent = "processing failed";
+          overlay.style.color = "#ff3b3b";
+        }
+      }
+
+      // Add new page
+      addPageBtn.addEventListener("click", () => {
+        pageCount++;
+        const pageBreak = document.createElement("div");
+        pageBreak.className = "page-break";
+        pageBreak.textContent = `page ${pageCount}`;
+
+        const block = document.createElement("div");
+        block.className = "block";
+        block.dataset.page = String(pageCount);
+
+        const dz = document.createElement("div");
+        dz.className = "drop-zone";
+        dz.dataset.page = String(pageCount);
+        dz.innerHTML = '<span>drop image</span><input type="file" accept="image/*" />';
+
+        const textarea = document.createElement("textarea");
+        textarea.className = "block-text";
+        textarea.placeholder = "continue writing...";
+        textarea.rows = 3;
+
+        block.appendChild(dz);
+        block.appendChild(textarea);
+        blocks.appendChild(pageBreak);
+        blocks.appendChild(block);
+      });
+
+      // Autosave to localStorage
+      function autosave() {
+        const data = {
+          title: titleInput.value,
+          slug: slugInput.value,
+          structure: (document.getElementById("structureSelect") as HTMLSelectElement).value,
+          tags: (document.getElementById("tagsInput") as HTMLInputElement).value,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("memorywalk-draft", JSON.stringify(data));
+        statusEl.textContent = "saved";
+        setTimeout(() => { statusEl.textContent = ""; }, 1500);
+      }
+
+      // Restore from localStorage
+      const saved = localStorage.getItem("memorywalk-draft");
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          titleInput.value = data.title || "";
+          slugInput.value = data.slug || "";
+          (document.getElementById("structureSelect") as HTMLSelectElement).value = data.structure || "linear";
+          (document.getElementById("tagsInput") as HTMLInputElement).value = data.tags || "";
+          publishBtn.disabled = !titleInput.value.trim();
+        } catch {}
+      }
+
+      // Publish (logs to console in dev — real git commit would be a server action)
+      publishBtn.addEventListener("click", () => {
+        const walk = {
+          title: titleInput.value,
+          slug: slugInput.value,
+          structure: (document.getElementById("structureSelect") as HTMLSelectElement).value,
+          tags: (document.getElementById("tagsInput") as HTMLInputElement).value.split(",").map((t: string) => t.trim()).filter(Boolean),
+          pages: [] as { text: string; hasImage: boolean }[],
+        };
+
+        const blockEls = blocks.querySelectorAll(".block");
+        blockEls.forEach((block) => {
+          const textarea = block.querySelector(".block-text") as HTMLTextAreaElement;
+          const imgContainer = block.querySelector(".block-image-container");
+          walk.pages.push({
+            text: textarea?.value || "",
+            hasImage: !!imgContainer,
+          });
+        });
+
+        console.log("PUBLISH:", JSON.stringify(walk, null, 2));
+        statusEl.textContent = "published (see console)";
+        localStorage.removeItem("memorywalk-draft");
+      });
+    </script>
+  </body>
+</html>

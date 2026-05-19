@@ -499,3 +499,25 @@ The original Phase 0 visual register failed. Specifically:
 2. "Space Grotesk is loaded via Google Fonts. Google Fonts serves a CSS file that imports WOFF2 files. This is two network requests to Google's servers per page load. The brief says 'no third-party scripts' — does a font CDN count? If the user is in a country that blocks Google, the site has no font."
 3. "The click-to-advance navigation has no visual indicator. A first-time reader lands on a walk page and sees an image and text. Nothing tells them to click the image. They might think the walk is one page. What's the discovery mechanism?"
 4. "The branching walk links still show page IDs (page-002, page-003) rather than descriptive text. The new §3 doesn't address this. Is this a carry-forward problem from the previous iteration?"
+
+## Phase 2 — Front-Page Editor — 2026-05-19
+
+### What was delivered
+- straw.page-inspired editor at `/write/new`: inline title field, text blocks, image drop zones with real-time 0.3MP processing, metadata panel, autosave to localStorage
+- `/write` index listing existing walks with "+ new walk" CTA
+- Landing page updated with prominent "+ new walk" button in accent green
+- Image drag-and-drop runs the full processor pipeline in-browser before displaying
+- Multi-page support: "+ new page" button splits content with visual page breaks
+- Auto-generated slug from title, manual override available
+- Publish button logs walk structure to console (git commit integration is a local dev workflow)
+
+### What I cut corners on
+- Publish writes to console, not to the filesystem. Real publishing needs a dev-server API endpoint or a Node script.
+- No image persistence — processed images are stored as object URLs in memory, lost on page refresh.
+- No per-page image/text serialization to localStorage (only metadata is autosaved).
+- The editor builds in production too. Per §21 it should be dev-only, but gating requires SSR or a build-time flag.
+
+### Red-team prompts
+1. "The editor builds in production. Anyone visiting /write/new can see the editing surface. §21 says 'only mounted in astro dev mode.' This is a spec violation."
+2. "Autosave only saves metadata (title, slug, tags). The actual content (text blocks, images) is lost on refresh. This makes the editor frustrating for real use."
+3. "The 0.3MP processing runs synchronously in the main thread via canvas2D. On a large image (12MP phone photo), this could block the UI for seconds."
