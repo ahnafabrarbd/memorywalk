@@ -2,6 +2,7 @@
 import { getCollection, render } from "astro:content";
 import Reader from "../../../../../layouts/Reader.astro";
 import PageNav from "../../../../../components/reader/PageNav.astro";
+import MiniMap from "../../../../../components/reader/MiniMap.astro";
 
 export async function getStaticPaths() {
   const allPages = await getCollection("pages");
@@ -10,24 +11,19 @@ export async function getStaticPaths() {
   const paths = [];
 
   for (const page of allPages) {
-    // page.id is like "test-author/test-walk/page-001"
     const parts = page.id.split("/");
     const author = parts[0];
     const slug = parts[1];
     const pageId = parts[2];
 
-    // Find sibling pages for this walk
     const prefix = `${author}/${slug}/`;
     const siblings = allPages
       .filter((p) => p.id.startsWith(prefix))
       .sort((a, b) => a.id.localeCompare(b.id));
 
     const walk = walks.find((w) => {
-      // glob loader ID may be "test-author/test-walk/walk" or "test-author/test-walk"
       const wParts = w.id.split("/");
-      const wAuthor = wParts[0];
-      const wSlug = wParts[1];
-      return wAuthor === author && wSlug === slug;
+      return wParts[0] === author && wParts[1] === slug;
     });
 
     paths.push({
@@ -48,12 +44,13 @@ export async function getStaticPaths() {
 const { page, walk, siblings, walkAuthor, walkSlug } = Astro.props;
 const { id: pageId } = Astro.params;
 
+const structure = walk?.data.structure ?? "linear";
 const currentIndex = siblings.findIndex((s) => s.id.endsWith(`/${pageId}`));
 const total = siblings.length;
 
+// Linear navigation
 const prevPage = currentIndex > 0 ? siblings[currentIndex - 1] : null;
 const nextPage = currentIndex < total - 1 ? siblings[currentIndex + 1] : null;
-
 const prevUrl = prevPage
   ? `/walk/${walkAuthor}/${walkSlug}/page/${prevPage.id.split("/").pop()}`
   : null;
@@ -61,9 +58,24 @@ const nextUrl = nextPage
   ? `/walk/${walkAuthor}/${walkSlug}/page/${nextPage.id.split("/").pop()}`
   : null;
 
+// Branching links
+const branchLinks = (page.data.links ?? []).map((linkId: string) => ({
+  id: linkId,
+  url: `/walk/${walkAuthor}/${walkSlug}/page/${linkId}`,
+}));
+
+// Geo-anchored: mini-map data
+const geoPages = siblings
+  .filter((s) => s.data.coords)
+  .map((s) => ({
+    id: s.data.id,
+    coords: s.data.coords as [number, number],
+    url: `/walk/${walkAuthor}/${walkSlug}/page/${s.id.split("/").pop()}`,
+  }));
+
 const { Content } = await render(page);
 
-// Enforce body word count constraint (§11: ≤400 words)
+// Enforce body word count constraint (§11: <=400 words)
 if (page.body) {
   const wordCount = page.body.trim().split(/\s+/).filter(Boolean).length;
   if (wordCount > 400) {
@@ -78,14 +90,100 @@ const walkTitle = walk?.data.title ?? "untitled walk";
 ---
 
 <Reader title={`${walkTitle} — ${page.data.id}`}>
+  {structure === "geo-anchored" && geoPages.length > 0 && (
+    <MiniMap pages={geoPages} currentPageId={page.data.id} />
+  )}
+
   <img class="page-image" src={imagePath} alt="" />
+
   <div class="page-body">
     <Content />
+
+    {structure === "branching" && branchLinks.length > 0 && (
+      <div class="branch-links">
+        {branchLinks.map((link: { id: string; url: string }) => (
+          <a href={link.url} class="branch-link" data-page-id={link.id}>
+            {link.id}
+          </a>
+        ))}
+      </div>
+    )}
   </div>
-  <PageNav
-    current={currentIndex + 1}
-    total={total}
-    prevUrl={prevUrl}
-    nextUrl={nextUrl}
-  />
+
+  {structure === "linear" && (
+    <PageNav
+      current={currentIndex + 1}
+      total={total}
+      prevUrl={prevUrl}
+      nextUrl={nextUrl}
+    />
+  )}
+
+  {structure === "geo-anchored" && (
+    <PageNav
+      current={currentIndex + 1}
+      total={total}
+      prevUrl={prevUrl}
+      nextUrl={nextUrl}
+    />
+  )}
+
+  {structure === "branching" && (
+    <div class="page-nav">
+      <span class="branch-meta">{page.data.id}</span>
+    </div>
+  )}
 </Reader>
+
+<style>
+  .branch-links {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+  }
+
+  .branch-link {
+    color: var(--color-text);
+    border-bottom: 1px solid var(--color-rule);
+    padding-bottom: 0.125rem;
+  }
+
+  .branch-link:hover {
+    text-decoration: none;
+    border-color: var(--color-text);
+  }
+
+  .branch-link.visited {
+    color: var(--color-meta);
+  }
+
+  .branch-meta {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+</style>
+
+<script>
+  // Branching: track visited pages in sessionStorage
+  const walkPath = window.location.pathname.split("/page/")[0];
+  const storageKey = `visited:${walkPath}`;
+  const visited = new Set(JSON.parse(sessionStorage.getItem(storageKey) || "[]"));
+
+  // Mark current page as visited
+  const currentPageId = window.location.pathname.split("/page/")[1]?.replace(/\/$/, "");
+  if (currentPageId) {
+    visited.add(currentPageId);
+    sessionStorage.setItem(storageKey, JSON.stringify([...visited]));
+  }
+
+  // Style visited branch links
+  document.querySelectorAll<HTMLAnchorElement>(".branch-link").forEach((link) => {
+    const pageId = link.dataset.pageId;
+    if (pageId && visited.has(pageId)) {
+      link.classList.add("visited");
+    }
+  });
+</script>

@@ -1,0 +1,83 @@
+---
+interface PagePoint {
+  id: string;
+  coords: [number, number];
+  url: string;
+}
+
+interface Props {
+  pages: PagePoint[];
+  currentPageId: string;
+}
+
+const { pages, currentPageId } = Astro.props;
+const mapId = `minimap-${Math.random().toString(36).slice(2, 8)}`;
+---
+
+<div class="minimap-container">
+  <div id={mapId} class="minimap" data-pages={JSON.stringify(pages)} data-current={currentPageId}></div>
+</div>
+
+<style>
+  .minimap-container {
+    width: 100%;
+    max-width: 640px;
+    margin-bottom: 1rem;
+  }
+
+  .minimap {
+    width: 100%;
+    height: 180px;
+    border: 1px solid var(--color-rule);
+  }
+</style>
+
+<script>
+  import L from "leaflet";
+  import "leaflet/dist/leaflet.css";
+
+  document.querySelectorAll<HTMLElement>(".minimap").forEach((el) => {
+    const pages = JSON.parse(el.dataset.pages || "[]");
+    const currentId = el.dataset.current;
+
+    if (pages.length === 0) return;
+
+    const map = L.map(el, {
+      zoomControl: false,
+      attributionControl: false,
+      dragging: false,
+      scrollWheelZoom: false,
+      doubleClickZoom: false,
+      touchZoom: false,
+    });
+
+    L.tileLayer(
+      "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+      { maxZoom: 19 },
+    ).addTo(map);
+
+    const coords: [number, number][] = pages.map((p: { coords: [number, number] }) => p.coords);
+
+    // Draw route line
+    if (coords.length > 1) {
+      L.polyline(coords, { color: "#fff", opacity: 0.2, weight: 1 }).addTo(map);
+    }
+
+    // Draw points
+    pages.forEach((p: { id: string; coords: [number, number]; url: string }) => {
+      const isCurrent = p.id === currentId;
+      L.circleMarker(p.coords, {
+        radius: isCurrent ? 5 : 3,
+        fillColor: "#fff",
+        fillOpacity: isCurrent ? 1 : 0.4,
+        stroke: false,
+      })
+        .on("click", () => {
+          if (!isCurrent) window.location.href = p.url;
+        })
+        .addTo(map);
+    });
+
+    map.fitBounds(L.latLngBounds(coords), { padding: [20, 20] });
+  });
+</script>

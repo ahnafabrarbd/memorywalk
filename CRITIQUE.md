@@ -221,3 +221,39 @@
 2. "The collision computation is O(n^2) over all geo-tagged pages. With 1000 pages that's 500K comparisons. At build time this is fine, but what about a site with 10K pages? Is there a spatial index (quadtree, geohash) consideration?"
 3. "Leaflet's default marker images (marker-icon.png, marker-shadow.png) are bundled with the library but you're using circle markers instead. Are the unused marker image assets still being included in the build?"
 4. "The map click handler opens pages in a new tab (`window.open`). On mobile, this may be blocked by popup blockers. Should the click navigate in the current tab instead?"
+
+## Phase 6 — Branching + Geo-Anchored Structures — 2026-05-19
+
+### What was delivered
+- Branching hypertext walks: `links` array rendered as inline navigation at the bottom of the body, session-local visited tracking via sessionStorage, visited links styled in `#888`
+- Geo-anchored walks: inline mini-map (Leaflet, dark tiles) at the top of the reader showing the route as a polyline with circle markers, current page highlighted, click to navigate between points
+- All three structures render through the same Astro page template with conditional navigation logic
+- Linear walks: prev/next with page counter (unchanged)
+- Branching walks: link buttons + page ID footer, no prev/next
+- Geo-anchored walks: mini-map + prev/next (also chronologically navigable)
+- Two new test walks: "the forking path" (branching, 4 pages) and "along the embarcadero" (geo-anchored, 3 pages)
+
+### What I'm uncertain about
+- The mini-map loads Leaflet on every geo-anchored page. This is a ~40KB JS + ~14KB CSS dependency per page view. For linear/branching walks, Leaflet is not loaded (tree-shaking should handle this since the import is in the MiniMap component script).
+- The branching visited-set uses sessionStorage, which clears when the browser tab closes. The brief says "session-local" which implies this is correct, but it means revisiting the walk in a new session resets the visited state.
+- The mini-map has `dragging: false` and all zoom interactions disabled. This makes it a static visual, which is simpler but may frustrate users who want to zoom into dense point clusters.
+
+### What I cut corners on
+- Branch link labels show raw page IDs (`page-002`, `page-003`) rather than meaningful text. The brief mentions "inline links in body" — ideally the author would write natural-language links in the markdown that resolve to page URLs. This would require markdown processing, not just link rendering.
+- No "you've visited all pages" state for branching walks.
+- The mini-map doesn't show the current page's label or any text — just dots and lines.
+- Placeholder images are still 1x1 black JPEGs for the new test walks.
+
+### What I'd do differently with hindsight
+1. Would implement branching links as markdown syntax (e.g., `[go left](page-002)`) resolved at render time, rather than a separate links block below the body. This would match the "inline links in body" spec from §7 more closely.
+2. Would make the mini-map slightly interactive (at least pinch-zoom on mobile) rather than fully static.
+3. Would add a visual indicator to the mini-map showing direction of travel (arrow on the polyline).
+
+### Open questions for the next phase
+- Phase 7 is the curator surface. The `curated: true` toggle needs to work through Decap. Should `/admin/curate` be a separate Astro page or a custom Decap page?
+
+### Red-team prompts
+1. "Branching links show page IDs, not descriptive text. The brief says 'inline links in body.' If a branching walk's prose says 'you can go left or right' but the links are rendered as 'page-002 · page-003' below, the connection between prose and navigation is broken. This is a UX failure for the core branching experience."
+2. "The mini-map loads Leaflet. Every geo-anchored page now includes the Leaflet JS bundle. Is this code-split per page, or does the bundle get loaded even on linear walk pages? Check the actual build output."
+3. "SessionStorage is per-origin and per-tab. If a user opens two branching walks from the same site in different tabs, they have independent visited sets. But if they open the same walk in two tabs, both tabs share the visited set via sessionStorage. Is this the intended behavior?"
+4. "The geo-anchored walk test data places three points along the Embarcadero. These points are ~200-300m apart. The mini-map at 180px height will show them as closely spaced dots. Does the fitBounds calculation produce a useful zoom level, or does it zoom too far out?"
