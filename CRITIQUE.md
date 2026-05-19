@@ -421,3 +421,40 @@
 1. "The SELFHOSTING guide says 'edit site.config.ts — this is the single file that defines your instance.' But the user also needs to edit config.yml (repo name, OAuth URL) and curators.json. That's three files, not one. The 'single config file' promise from §12 is broken."
 2. "The build.yml CI workflow runs on PRs from forks (via open authoring). A malicious PR could modify the build workflow itself, or add scripts to package.json, and the CI would execute them. Should the workflow only run on trusted branches?"
 3. "There's no automated test that verifies the site works correctly. The build succeeds, but there's no check that walk pages render, that the nexus map has correct data, or that the collisions computation is valid. What's the testing story?"
+
+## Phase 0 (redo) — Post-Mortem of Original Phase 0 — 2026-05-19
+
+### What didn't work
+
+The original Phase 0 visual register failed. Specifically:
+
+1. **The type was too small.** Body text at `1rem` (16px), titles at `1.25rem` (20px), metadata at `0.875rem` (14px). On a 1920×1080 screen this reads as a settings panel, not a publication. The page felt like admin UI, not art.
+
+2. **The monochrome palette was muted and corporate.** `#000`/`#fff`/`#888`/`#222` is every dark-mode SaaS dashboard. There was nothing in the palette that said "net-art" or "psychogeography." The Are.na reference was interpreted as aesthetic instruction rather than structural instruction.
+
+3. **Monospace metadata created a developer-tool feel.** SF Mono for navigation and metadata made the site read as a terminal, not a journal. The mix of serif body + monospace meta created a visual hierarchy that said "documentation" rather than "publication."
+
+4. **The reader was politely letterboxed.** The image sat in a 640px column centered on the page with generous padding. On a large screen, 60% of the viewport was empty black. This was respectful of the image but made the experience feel small and precious rather than immersive.
+
+5. **The prev/next nav was too present.** `01 / 03 — prev · next` as a visible bottom bar turned reading into a slideshow control experience. The reader should advance by *engaging with the content* (clicking the image, pressing a key), not by operating controls.
+
+6. **No motion, no life.** "No animations" was treated as an absolute constraint rather than a budget. The site felt static in the dead sense, not the contemplative sense. A slow, living background would have given the dark palette depth instead of flatness.
+
+### What worked (keep)
+
+- Astro + TypeScript + content collections — the build infrastructure is correct.
+- The content model (walks, pages, people) and file structure.
+- The Are.na structural mapping (walks as channels, pages as blocks).
+- The `site.config.ts` single-config-source pattern.
+- The 0.3MP processor pipeline.
+- The collisions computation.
+
+### What needs to change for the redo
+
+- Palette: vivid, saturated, 4+ accent colors assigned semantically.
+- Typography: bold condensed sans for display, comfortable sans for body. No monospace. Big sizes — landing title at `clamp(3rem, 8vw, 7rem)`.
+- Background: WebGL shader, cursor-responsive, palette-derived.
+- Layout: image dominates viewport, text fills width, no precious margins.
+- Navigation: click-to-advance, no visible prev/next controls.
+- Motion: shader moves continuously; everything else stays still.
+- Auth: stripped entirely for single-author MVP.
