@@ -5,11 +5,21 @@ import { siteConfig } from "../../site.config";
 
 <List title="about">
   <div class="about-page">
-    <h1 class="page-heading">about</h1>
+    <h1 class="page-title">about</h1>
     <div class="about-body">
-      <p>{siteConfig.name} is a collective publishing platform for psychography journals — visual-textual records of walks that map the psyche against the geography it moves through.</p>
+      <p>{siteConfig.name} is a publishing platform for psychography journals — visual-textual records of walks that map the psyche against the geography it moves through.</p>
       <p>each entry is a walk: a sequence of images and text, captured in place, processed through a low-resolution sensor emulation, and published as a hypertext document.</p>
-      <p>the project is open source. the content is licensed under CC BY-NC-SA 4.0. the code is MIT.</p>
+      <p>walks are connected through collisions — geographic, temporal, and semantic relationships computed from the content itself. there are no comments, no likes, no follows.</p>
+    </div>
+
+    <h2 class="section-label">colophon</h2>
+    <div class="about-body">
+      <p>built with astro. images processed through a custom 0.3MP CMOS sensor emulation pipeline. maps use leaflet with openstreetmap tiles.</p>
+      <p>references: are.na (structure), adaweb.com/project/aitken (reader), 0.3MP Camera by dwsh (image processing).</p>
+      <p>code: MIT license. content: CC BY-NC-SA 4.0.</p>
+      {siteConfig.repoUrl && (
+        <p><a href={siteConfig.repoUrl} class="repo-link">source code</a></p>
+      )}
     </div>
   </div>
 </List>
@@ -17,23 +27,37 @@ import { siteConfig } from "../../site.config";
 <style>
   .about-page {
     padding-top: 2rem;
+    max-width: var(--measure);
   }
 
-  .page-heading {
-    font-family: var(--font-mono);
-    font-size: var(--size-sm);
-    font-weight: normal;
-    color: var(--color-meta);
+  .page-title {
+    font-family: var(--font-display);
+    font-size: var(--size-title-walk);
+    font-weight: 700;
     margin-bottom: 1.5rem;
   }
 
+  .section-label {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-accent-green);
+    margin-top: 3rem;
+    margin-bottom: 1rem;
+  }
+
   .about-body {
-    max-width: var(--measure);
-    font-size: var(--size-base);
-    color: var(--color-meta);
+    font-size: var(--size-body);
+    color: var(--color-dim);
   }
 
   .about-body p {
-    margin-bottom: 1rem;
+    margin-bottom: 1em;
+  }
+
+  .repo-link {
+    color: var(--color-accent-blue);
   }
 </style>

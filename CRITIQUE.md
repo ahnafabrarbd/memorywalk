@@ -458,3 +458,44 @@ The original Phase 0 visual register failed. Specifically:
 - Navigation: click-to-advance, no visible prev/next controls.
 - Motion: shader moves continuously; everything else stays still.
 - Auth: stripped entirely for single-author MVP.
+
+## Phase 0 (redo) — Maximalist Net-Art Rescaffold — 2026-05-19
+
+### What was delivered
+- Complete visual overhaul: WebGL fragment shader background (fbm noise, cursor-responsive with 0.1 lerp inertia, palette-derived colors cycling through magenta/indigo/viridian/burnt orange)
+- New palette: `#ff3b3b` (red, titles/hover), `#3bff8a` (green, labels), `#3b8aff` (blue, tags), `#ffd23b` (yellow, emphasis). No `#888` or `#222` anywhere.
+- Typography: Space Grotesk throughout. Landing title at `clamp(3rem, 8vw, 7rem)`, walk titles at `clamp(2rem, 5vw, 4rem)`, body at `clamp(1.125rem, 1.5vw, 1.375rem)`. No monospace.
+- Click-to-advance reader: click image or press right arrow/space to advance. Arrow left goes back. No visible prev/next controls.
+- Simplified routes: `/walk/[slug]` (no `[author]` prefix), single-author model
+- Removed: Decap CMS, OAuth proxy, curators.json, `/admin`, `/curated`, `/contribute`, `/colophon`, `/people`, PageNav component, dev/processor page
+- Kept: content collections, processor pipeline, collisions lib, indexer lib, IPFS action, test content, build workflow
+- `prefers-reduced-motion: reduce` hides shader, falls back to static gradient
+- 17 pages, 1.24s build, zero errors
+
+### What I'm uncertain about
+- The shader uses 4 iterations of fbm which may be expensive on low-end mobile GPUs. Haven't tested on actual mobile hardware. May need to reduce iterations or lower the canvas resolution on mobile.
+- Space Grotesk loaded from Google Fonts CDN. The spec says "no third-party scripts" — fonts CDN is technically a third-party request. Should self-host the font.
+- The shader colors are hardcoded in GLSL as `vec3` constants rather than read from CSS custom properties. If the palette changes, both the GLSL and the CSS need updating. These could be passed as uniforms.
+- Click-to-advance on image may not be discoverable. There's no visual affordance telling readers to click. The cursor is `pointer` but that's subtle.
+
+### What I cut corners on
+- Font loaded from Google Fonts CDN instead of self-hosted (third-party request).
+- The shader fallback for no-WebGL is a plain CSS gradient, not an animated CSS gradient. On very old devices, the background is static.
+- Nexus page is a stub again (pending Weather Journal map integration).
+- Removed the indexer endpoints (walks-index.json, collisions.json, curated-index.json) — they'll return in later phases.
+- No responsive testing at the three exact resolutions specified (1920x1080, 1440x900, 390x844). Sizing uses clamp() which should handle these but visual verification needed.
+
+### What I'd do differently with hindsight
+1. Would self-host Space Grotesk from day one to avoid the third-party CDN request.
+2. Would pass palette colors to the shader as uniforms so they're defined in one place.
+3. Would add a subtle visual hint for click-to-advance (e.g. a faint arrow that appears on hover over the image).
+
+### Open questions for the next phase
+- Phase 1 (0.3MP processor) is already built from the previous iteration. Should I just re-mount the harness at a dev-only route, or does the harness need the new visual register?
+- Should I skip Phase 1 (it's done) and move directly to Phase 2 (front-page editor)?
+
+### Red-team prompts
+1. "The WebGL shader runs continuously at 60fps via requestAnimationFrame. On a page where the user is reading a 400-word text, the GPU is burning power to animate a background they can't see (it's behind text). Is there a visibility-based throttle?"
+2. "Space Grotesk is loaded via Google Fonts. Google Fonts serves a CSS file that imports WOFF2 files. This is two network requests to Google's servers per page load. The brief says 'no third-party scripts' — does a font CDN count? If the user is in a country that blocks Google, the site has no font."
+3. "The click-to-advance navigation has no visual indicator. A first-time reader lands on a walk page and sees an image and text. Nothing tells them to click the image. They might think the walk is one page. What's the discovery mechanism?"
+4. "The branching walk links still show page IDs (page-002, page-003) rather than descriptive text. The new §3 doesn't address this. Is this a carry-forward problem from the previous iteration?"

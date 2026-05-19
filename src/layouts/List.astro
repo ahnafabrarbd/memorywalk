@@ -1,5 +1,6 @@
 ---
 import "../components/shared/tokens.css";
+import ShaderBackground from "../components/shared/ShaderBackground.astro";
 import TopBar from "../components/list/TopBar.astro";
 import { siteConfig } from "../../site.config";
 
@@ -22,13 +23,16 @@ const { title } = Astro.props;
       }
 
       .list-content {
-        max-width: 960px;
+        max-width: 1200px;
         margin: 0 auto;
         padding-bottom: 4rem;
+        position: relative;
+        z-index: 1;
       }
     </style>
   </head>
   <body>
+    <ShaderBackground />
     <TopBar />
     <div class="list-content">
       <slot />

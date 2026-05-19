@@ -8,5 +8,4 @@ export const siteConfig = {
     enabled: false,
     gateway: "https://gateway.pinata.cloud/ipfs",
   },
-  curatorsFile: "./curators.json",
 };

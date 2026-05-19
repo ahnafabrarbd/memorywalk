@@ -1,12 +1,15 @@
 ---
 import "../components/shared/tokens.css";
+import ShaderBackground from "../components/shared/ShaderBackground.astro";
 import { siteConfig } from "../../site.config";
 
 interface Props {
   title: string;
+  walkSlug: string;
+  nextPageUrl: string | null;
 }
 
-const { title } = Astro.props;
+const { title, walkSlug, nextPageUrl } = Astro.props;
 ---
 
 <!doctype html>
@@ -22,59 +25,104 @@ const { title } = Astro.props;
         align-items: center;
         justify-content: center;
         min-height: 100vh;
-        padding: 2rem 1rem;
+        padding: 1rem;
       }
 
-      .reader-content {
+      .reader {
         width: 100%;
-        max-width: 640px;
+        max-width: var(--image-width);
         display: flex;
         flex-direction: column;
         align-items: center;
+        position: relative;
+        z-index: 1;
       }
 
-      .reader-content :global(.page-image) {
-        max-width: 640px;
-        max-height: 480px;
-        width: 100%;
+      .reader :global(.page-image) {
+        width: var(--image-width);
+        max-width: 100%;
         height: auto;
+        cursor: pointer;
       }
 
-      .reader-content :global(.page-body) {
-        max-width: var(--measure);
+      .reader :global(.page-body) {
         width: 100%;
+        max-width: var(--measure);
         margin-top: 2rem;
-        font-size: var(--size-base);
+        font-size: var(--size-body);
         line-height: var(--leading);
       }
 
-      .reader-content :global(.page-nav) {
-        width: 100%;
-        max-width: var(--measure);
-        margin-top: 3rem;
-        font-family: var(--font-mono);
-        font-size: var(--size-sm);
-        color: var(--color-meta);
+      .reader :global(.page-body p) {
+        margin-bottom: 1em;
+      }
+
+      .reader :global(.walk-title) {
+        font-family: var(--font-display);
+        font-size: var(--size-title-walk);
+        font-weight: 700;
+        color: var(--color-accent-red);
+        margin-bottom: 1.5rem;
+        text-align: center;
+      }
+
+      .reader :global(.walk-back) {
+        position: fixed;
+        top: 1rem;
+        left: 1rem;
+        font-family: var(--font-display);
+        font-size: var(--size-label);
+        font-weight: 600;
+        color: var(--color-dim);
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        z-index: 10;
+      }
+
+      .reader :global(.walk-back:hover) {
+        color: var(--color-accent-red);
       }
 
       @media (max-width: 480px) {
         body {
-          padding: 1.5rem 1rem;
+          padding: 0.75rem;
         }
 
-        .reader-content :global(.page-body) {
-          margin-top: 1.5rem;
-        }
-
-        .reader-content :global(.page-nav) {
-          margin-top: 2rem;
+        .reader :global(.page-body) {
+          margin-top: 1.25rem;
         }
       }
     </style>
   </head>
   <body>
-    <div class="reader-content">
+    <ShaderBackground />
+    <a class="walk-back" href="/walks">{siteConfig.name}</a>
+    <div class="reader">
       <slot />
     </div>
+    {nextPageUrl && (
+      <script define:vars={{ nextPageUrl }}>
+        // Click-to-advance: click the image or press right/space
+        document.addEventListener("DOMContentLoaded", () => {
+          const img = document.querySelector(".page-image");
+          if (img) {
+            img.addEventListener("click", () => {
+              window.location.href = nextPageUrl;
+            });
+          }
+
+          document.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowRight" || e.key === " ") {
+              e.preventDefault();
+              window.location.href = nextPageUrl;
+            }
+            if (e.key === "ArrowLeft") {
+              e.preventDefault();
+              history.back();
+            }
+          });
+        });
+      </script>
+    )}
   </body>
 </html>

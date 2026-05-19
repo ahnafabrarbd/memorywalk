@@ -3,65 +3,64 @@ import { siteConfig } from "../../../site.config";
 ---
 
 <nav class="topbar">
-  <a href="/">{siteConfig.name}</a>
-  <span class="topbar-sep">&middot;</span>
-  <a href="/walks">walks</a>
-  <span class="topbar-sep">&middot;</span>
-  <a href="/curated">curated</a>
-  <span class="topbar-sep">&middot;</span>
-  <a href="/nexus">nexus</a>
-  <span class="topbar-sep">&middot;</span>
-  <a href="/people">people</a>
-  <span class="topbar-sep">&middot;</span>
-  <a href="/admin" id="authLink">log in</a>
-  <a href="/admin" id="writeLink" class="write-link" style="display:none;">
-    <span class="topbar-sep">&middot;</span>
-    write
-  </a>
+  <a href="/" class="topbar-brand">{siteConfig.name}</a>
+  <div class="topbar-links">
+    <a href="/walks">walks</a>
+    <a href="/nexus">nexus</a>
+    <a href="/about">about</a>
+  </div>
 </nav>
 
 <style>
   .topbar {
-    max-width: 960px;
+    max-width: 1200px;
     margin: 0 auto;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--color-rule);
-    font-family: var(--font-mono);
-    font-size: var(--size-sm);
-    color: var(--color-meta);
+    padding: 1.5rem 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    position: relative;
+    z-index: 10;
   }
 
-  .topbar a {
+  .topbar-brand {
+    font-family: var(--font-display);
+    font-size: var(--size-nav);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     color: var(--color-text);
   }
 
-  .topbar-sep {
-    margin: 0 0.25rem;
+  .topbar-brand:hover {
+    color: var(--color-accent-red);
   }
 
-  .write-link {
-    display: none;
+  .topbar-links {
+    display: flex;
+    gap: 1.5rem;
+  }
+
+  .topbar-links a {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-dim);
+  }
+
+  .topbar-links a:hover {
+    color: var(--color-accent-red);
+  }
+
+  @media (max-width: 480px) {
+    .topbar {
+      padding: 1rem 0;
+    }
+
+    .topbar-links {
+      gap: 1rem;
+    }
   }
 </style>
-
-<script>
-  const authLink = document.getElementById("authLink") as HTMLAnchorElement;
-  const writeLink = document.getElementById("writeLink") as HTMLAnchorElement;
-
-  try {
-    const stored = localStorage.getItem("netlify-cms-user");
-    if (stored) {
-      const user = JSON.parse(stored);
-      if (user.token) {
-        // Logged in: show handle and write link
-        if (user.name) {
-          authLink.textContent = user.name;
-          authLink.href = `/people/${user.name}`;
-        }
-        writeLink.style.display = "inline";
-      }
-    }
-  } catch {
-    // Not logged in — defaults are fine
-  }
-</script>

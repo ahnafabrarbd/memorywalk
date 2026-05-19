@@ -1,0 +1,148 @@
+---
+import { getCollection, render } from "astro:content";
+import Reader from "../../../../layouts/Reader.astro";
+import { siteConfig } from "../../../../../site.config";
+
+export async function getStaticPaths() {
+  const allPages = await getCollection("pages");
+  const walks = await getCollection("walks");
+
+  const paths = [];
+
+  for (const page of allPages) {
+    const parts = page.id.split("/");
+    const author = parts[0];
+    const slug = parts[1];
+    const pageId = parts[2];
+
+    const prefix = `${author}/${slug}/`;
+    const siblings = allPages
+      .filter((p) => p.id.startsWith(prefix))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const walk = walks.find((w) => {
+      const wParts = w.id.split("/");
+      return wParts[0] === author && wParts[1] === slug;
+    });
+
+    paths.push({
+      params: { slug, id: pageId },
+      props: { page, walk, siblings, walkSlug: slug, walkAuthor: author },
+    });
+  }
+
+  return paths;
+}
+
+const { page, walk, siblings, walkSlug, walkAuthor } = Astro.props;
+const { id: pageId } = Astro.params;
+
+const structure = walk?.data.structure ?? "linear";
+const currentIndex = siblings.findIndex((s) => s.id.endsWith(`/${pageId}`));
+const total = siblings.length;
+const isFirstPage = currentIndex === 0;
+
+// Next page URL (for click-to-advance)
+const nextPage = currentIndex < total - 1 ? siblings[currentIndex + 1] : null;
+const nextUrl = nextPage
+  ? `/walk/${walkSlug}/page/${nextPage.id.split("/").pop()}`
+  : null;
+
+// Branching links
+const branchLinks = (page.data.links ?? []).map((linkId: string) => ({
+  id: linkId,
+  url: `/walk/${walkSlug}/page/${linkId}`,
+}));
+
+const { Content } = await render(page);
+
+// Enforce body word count (<=400 words)
+if (page.body) {
+  const wordCount = page.body.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount > 400) {
+    throw new Error(`Page ${page.id} has ${wordCount} words (max 400).`);
+  }
+}
+
+// Image path
+const ipfsEnabled = siteConfig.ipfs.enabled && page.data.image_cid;
+const localImagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
+const imagePath = ipfsEnabled
+  ? `${siteConfig.ipfs.gateway}/${page.data.image_cid}`
+  : localImagePath;
+
+const walkTitle = walk?.data.title ?? "untitled walk";
+const isLastPage = !nextPage && (!page.data.links || page.data.links.length === 0);
+---
+
+<Reader title={`${walkTitle} — ${page.data.id}`} walkSlug={walkSlug} nextPageUrl={nextUrl}>
+  {isFirstPage && <h2 class="walk-title">{walkTitle}</h2>}
+
+  {ipfsEnabled ? (
+    <img
+      class="page-image"
+      src={imagePath}
+      alt=""
+      onerror={`this.onerror=null;this.src='${localImagePath}';`}
+    />
+  ) : (
+    <img class="page-image" src={imagePath} alt="" />
+  )}
+
+  <div class="page-body">
+    <Content />
+
+    {structure === "branching" && branchLinks.length > 0 && (
+      <div class="branch-links">
+        {branchLinks.map((link: { id: string; url: string }) => (
+          <a href={link.url} class="branch-link">{link.id}</a>
+        ))}
+      </div>
+    )}
+  </div>
+
+  {isLastPage && (
+    <div class="walk-end">
+      <span class="end-mark">end</span>
+    </div>
+  )}
+</Reader>
+
+<style>
+  .branch-links {
+    margin-top: 1.5rem;
+    display: flex;
+    gap: 1rem;
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .branch-link {
+    color: var(--color-accent-green);
+    border-bottom: 1px solid var(--color-accent-green);
+    padding-bottom: 0.125rem;
+  }
+
+  .branch-link:hover {
+    color: var(--color-accent-red);
+    border-color: var(--color-accent-red);
+    text-decoration: none;
+  }
+
+  .walk-end {
+    margin-top: 3rem;
+    text-align: center;
+  }
+
+  .end-mark {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: var(--color-dim);
+  }
+</style>

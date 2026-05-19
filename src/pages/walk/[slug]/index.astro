@@ -17,14 +17,14 @@ export async function getStaticPaths() {
     const firstPageId = walkPages[0]?.id.split("/").pop() ?? "page-001";
 
     return {
-      params: { author, slug },
+      params: { slug },
       props: { firstPageId },
     };
   });
 }
 
-const { author, slug } = Astro.params;
+const { slug } = Astro.params;
 const { firstPageId } = Astro.props;
 
-return Astro.redirect(`/walk/${author}/${slug}/page/${firstPageId}`);
+return Astro.redirect(`/walk/${slug}/page/${firstPageId}`);
 ---
