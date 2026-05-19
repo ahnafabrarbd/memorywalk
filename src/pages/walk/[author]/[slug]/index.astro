@@ -3,19 +3,28 @@ import { getCollection } from "astro:content";
 
 export async function getStaticPaths() {
   const walks = await getCollection("walks");
+  const pages = await getCollection("pages");
+
   return walks.map((walk) => {
     const parts = walk.id.split("/");
     const author = parts[0];
     const slug = parts[1];
+
+    const walkPages = pages
+      .filter((p) => p.id.startsWith(`${author}/${slug}/`))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const firstPageId = walkPages[0]?.id.split("/").pop() ?? "page-001";
+
     return {
       params: { author, slug },
-      props: { walk },
+      props: { firstPageId },
     };
   });
 }
 
 const { author, slug } = Astro.params;
+const { firstPageId } = Astro.props;
 
-// Redirect to first page
-return Astro.redirect(`/walk/${author}/${slug}/page/page-001`);
+return Astro.redirect(`/walk/${author}/${slug}/page/${firstPageId}`);
 ---

@@ -63,6 +63,16 @@ const nextUrl = nextPage
 
 const { Content } = await render(page);
 
+// Enforce body word count constraint (§11: ≤400 words)
+if (page.body) {
+  const wordCount = page.body.trim().split(/\s+/).filter(Boolean).length;
+  if (wordCount > 400) {
+    throw new Error(
+      `Page ${page.id} has ${wordCount} words (max 400). Reduce the body text.`,
+    );
+  }
+}
+
 const imagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
 const walkTitle = walk?.data.title ?? "untitled walk";
 ---

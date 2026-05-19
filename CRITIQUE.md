@@ -150,3 +150,37 @@
 2. "The processor is duplicated: src/lib/processor/ (ES modules, used by harness) and public/admin/widgets/processor-widget.js (IIFE, used by Decap). If someone fixes a bug in the Bayer simulation in one, the other stays broken. How is this caught?"
 3. "exifr is loaded from CDN (unpkg). If unpkg is down or blocked, the widget fails to extract EXIF but still processes the image. Is this degradation acceptable, or should exifr be bundled?"
 4. "The widget preview shows processed images at 300px max-width. The actual output is 640x480. The preview is too small to see Bayer fringing and noise artifacts — the defining characteristics of the processor. Can the author actually evaluate the processing result?"
+
+## Phase 4 — Linear Walks Polished — 2026-05-19
+
+### What was delivered
+- Walks listing (`/walks`) with client-side sorting (date desc/asc, author, title) and filtering (tag, structure type)
+- Build-time indexer generating `walks-index.json` and `curated-index.json` as Astro JSON endpoints
+- Prebuild script (`scripts/copy-content-images.js`) that copies images from `content/walks/` to `public/content-images/`, resolving the Phase 0 duplication concern
+- Walk entry redirect now detects the actual first page from content, not hardcoded `page-001`
+- Body word count enforcement at build time (>400 words throws an error)
+- Mobile responsive adjustments for the Reader layout
+
+### What I'm uncertain about
+- The client-side sort/filter works by reordering DOM nodes. With hundreds of walks this should be fine, but with thousands it may feel sluggish. An alternative would be to use the `walks-index.json` and render entirely client-side, but that changes the SSG architecture.
+- The prebuild image copy script runs on `npm run build` via the `prebuild` npm lifecycle hook. During `npm run dev`, it doesn't run — so new content images added during development won't be served until you manually copy or restart the build. This may confuse contributors.
+- The word count check uses `page.body` which is the raw markdown. Frontmatter delimiters and metadata are stripped, but markdown syntax (links, emphasis) counts toward the word count. This is slightly stricter than "400 words of prose" but acceptable.
+
+### What I cut corners on
+- No `prebuild` hook for dev mode — only fires on `npm run build`. Could add a watch script but that's complexity for a dev-only concern.
+- The walks listing filters are basic HTML selects, not the "inline #tag in monospace" interaction described in §3. Tags should be clickable inline filters, not a dropdown. This is a polish item.
+- Profile pages weren't enhanced beyond Phase 0 — they already show bio, link, and walks. No additional responsive work was needed.
+
+### What I'd do differently with hindsight
+1. Would make tags clickable inline (`#industrial #edge`) that toggle filter state, matching the §3 spec more closely.
+2. Would run the image copy in the Astro integration hook (`astro:build:start`) instead of an npm lifecycle script, keeping the build pipeline unified.
+3. Would add the word count check to the content schema as a Zod refinement rather than a runtime check in the page template.
+
+### Open questions for the next phase
+- Phase 5 is the nexus map (Leaflet + dark tiles + walks-index plotting + geographic collisions). The test walk has no coords. Should I add coords to the test pages, or create a second test walk with geo data?
+
+### Red-team prompts
+1. "The prebuild script copies ALL images from content/walks/ to public/content-images/. If someone commits a 50MB TIFF accidentally, it gets copied to public/. Is there size validation?"
+2. "The word count check runs at page render time, not at content validation time. A walk with a >400-word page will fail the build, but the error message points to the render step, not the content file. Is the error message clear enough for an author to understand what to fix?"
+3. "The sort/filter controls use native HTML selects. On the dark background (#000) with white text, the select dropdown rendering is entirely browser-dependent and may be unreadable on some platforms (e.g., Windows Chrome renders dark text on dark background in dropdowns). Have you tested cross-browser?"
+4. "walks-index.json includes all page data (image paths, coords, timestamps) for every published walk. As the site grows, this file could become very large. The nexus map (Phase 5) needs it, but should readers download the full index just to view a walk listing?"

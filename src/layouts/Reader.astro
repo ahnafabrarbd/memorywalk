@@ -56,6 +56,20 @@ const { title } = Astro.props;
         font-size: var(--size-sm);
         color: var(--color-meta);
       }
+
+      @media (max-width: 480px) {
+        body {
+          padding: 1.5rem 1rem;
+        }
+
+        .reader-content :global(.page-body) {
+          margin-top: 1.5rem;
+        }
+
+        .reader-content :global(.page-nav) {
+          margin-top: 2rem;
+        }
+      }
     </style>
   </head>
   <body>

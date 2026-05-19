@@ -6,34 +6,83 @@ const walks = await getCollection("walks");
 const sorted = walks.sort(
   (a, b) => b.data.started_at.getTime() - a.data.started_at.getTime(),
 );
+
+const allTags = [...new Set(walks.flatMap((w) => w.data.tags))].sort();
+
+const walkData = sorted.map((w) => {
+  const parts = w.id.split("/");
+  return {
+    author: parts[0],
+    slug: parts[1],
+    title: w.data.title,
+    date: w.data.started_at.toISOString().slice(0, 10),
+    dateMs: w.data.started_at.getTime(),
+    tags: w.data.tags,
+    structure: w.data.structure,
+    summary: w.data.summary,
+  };
+});
 ---
 
 <List title="walks">
   <div class="walks-page">
     <h1 class="page-heading">walks</h1>
-    {sorted.length > 0 ? (
-      <ul class="walk-list">
-        {sorted.map((w) => {
-          const parts = w.id.split("/");
-          return (
-            <li class="walk-row">
-              <a href={`/walk/${parts[0]}/${parts[1]}`}>{w.data.title}</a>
-              <span class="walk-meta">
-                {w.data.author} &middot; {w.data.started_at.toISOString().slice(0, 10)}
-                {w.data.tags.length > 0 && (
-                  <span class="walk-tags">
-                    {w.data.tags.map((t) => `#${t}`).join(" ")}
-                  </span>
-                )}
+
+    <div class="controls">
+      <span class="control-label">sort</span>
+      <select id="sortSelect">
+        <option value="date-desc">date desc</option>
+        <option value="date-asc">date asc</option>
+        <option value="author">author</option>
+        <option value="title">title</option>
+      </select>
+
+      {allTags.length > 0 && (
+        <>
+          <span class="control-label">tag</span>
+          <select id="tagSelect">
+            <option value="">all</option>
+            {allTags.map((t) => (
+              <option value={t}>#{t}</option>
+            ))}
+          </select>
+        </>
+      )}
+
+      <span class="control-label">structure</span>
+      <select id="structureSelect">
+        <option value="">all</option>
+        <option value="linear">linear</option>
+        <option value="branching">branching</option>
+        <option value="geo-anchored">geo-anchored</option>
+      </select>
+    </div>
+
+    <ul class="walk-list" id="walkList">
+      {walkData.map((w) => (
+        <li
+          class="walk-row"
+          data-title={w.title}
+          data-author={w.author}
+          data-date={w.dateMs}
+          data-tags={w.tags.join(",")}
+          data-structure={w.structure}
+        >
+          <a href={`/walk/${w.author}/${w.slug}`}>{w.title}</a>
+          <span class="walk-meta">
+            {w.author} &middot; {w.date}
+            {w.tags.length > 0 && (
+              <span class="walk-tags">
+                {w.tags.map((t) => `#${t}`).join(" ")}
               </span>
-              <span class="walk-summary">{w.data.summary}</span>
-            </li>
-          );
-        })}
-      </ul>
-    ) : (
-      <p class="empty">no walks yet</p>
-    )}
+            )}
+          </span>
+          <span class="walk-summary">{w.summary}</span>
+        </li>
+      ))}
+    </ul>
+
+    {walkData.length === 0 && <p class="empty">no walks yet</p>}
   </div>
 </List>
 
@@ -47,7 +96,32 @@ const sorted = walks.sort(
     font-size: var(--size-sm);
     font-weight: normal;
     color: var(--color-meta);
+    margin-bottom: 1rem;
+  }
+
+  .controls {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
     margin-bottom: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    align-items: center;
+  }
+
+  .control-label {
+    color: var(--color-meta);
+  }
+
+  .controls select {
+    background: var(--color-bg);
+    color: var(--color-text);
+    border: 1px solid var(--color-rule);
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
   }
 
   .walk-list {
@@ -86,3 +160,46 @@ const sorted = walks.sort(
     color: var(--color-meta);
   }
 </style>
+
+<script>
+  const list = document.getElementById("walkList")!;
+  const sortSelect = document.getElementById("sortSelect") as HTMLSelectElement;
+  const tagSelect = document.getElementById("tagSelect") as HTMLSelectElement | null;
+  const structureSelect = document.getElementById("structureSelect") as HTMLSelectElement;
+
+  function applyFiltersAndSort() {
+    const rows = Array.from(list.querySelectorAll(".walk-row")) as HTMLElement[];
+    const sort = sortSelect.value;
+    const tag = tagSelect?.value ?? "";
+    const structure = structureSelect.value;
+
+    rows.forEach((row) => {
+      const tags = row.dataset.tags ?? "";
+      const rowStructure = row.dataset.structure ?? "";
+      const tagMatch = !tag || tags.split(",").includes(tag);
+      const structMatch = !structure || rowStructure === structure;
+      row.style.display = tagMatch && structMatch ? "" : "none";
+    });
+
+    const visible = rows.filter((r) => r.style.display !== "none");
+
+    visible.sort((a, b) => {
+      switch (sort) {
+        case "date-asc":
+          return Number(a.dataset.date) - Number(b.dataset.date);
+        case "author":
+          return (a.dataset.author ?? "").localeCompare(b.dataset.author ?? "");
+        case "title":
+          return (a.dataset.title ?? "").localeCompare(b.dataset.title ?? "");
+        default: // date-desc
+          return Number(b.dataset.date) - Number(a.dataset.date);
+      }
+    });
+
+    visible.forEach((row) => list.appendChild(row));
+  }
+
+  sortSelect.addEventListener("change", applyFiltersAndSort);
+  tagSelect?.addEventListener("change", applyFiltersAndSort);
+  structureSelect.addEventListener("change", applyFiltersAndSort);
+</script>
