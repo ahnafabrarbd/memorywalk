@@ -39,3 +39,41 @@
 3. "The walk ID from the glob loader includes the filename stem ('walk'). Every piece of code that parses walk IDs needs to know this. How many places will break when someone renames the file or changes the glob pattern?"
 4. "The Register A layout has no way to return to the walk listing or the site. Is this intentional per the brief, or an oversight? The adaweb reference has no chrome, but it also has a known URL structure readers can navigate manually."
 5. "You haven't validated the body word count constraint (<=400 words) at build time. The schema validates frontmatter but not content length. When does this enforcement actually happen?"
+
+## Phase 1 — 0.3MP Processor Standalone — 2026-05-19
+
+### What was delivered
+- Complete 0.3MP CMOS sensor emulation pipeline as `processImage(file, opts?) -> Promise<Blob>` in `/src/lib/processor/`
+- Six-stage pipeline: bilinear resize (640x480), 5-6-5 RGB color quantization, Bayer CFA mosaic/demosaic with bilinear interpolation, sensor noise (Gaussian + shot noise + horizontal banding), highlight bloom, JPEG compression at quality 65
+- Each stage is a separate module (resize.ts, quantize.ts, bayer.ts, noise.ts, bloom.ts, encode.ts) — pure functions operating on ImageData
+- Visual harness at `/dev/processor` with drag-and-drop, side-by-side original/processed comparison, EXIF extraction (coords, date, camera)
+- `exifr` added as sole new dependency for EXIF/GPS extraction
+
+### What I'm uncertain about
+- The Bayer demosaic uses basic bilinear interpolation which produces color fringing, but I haven't compared against the real 0.3MP Camera app's output. The fringing pattern and intensity may differ significantly from the reference.
+- The noise sigma (default 6) and bloom threshold (default 240) are reasonable estimates but not calibrated against real CMOS sensor profiles. These may need tuning once compared to reference images.
+- Shot noise scaling (darker areas noisier) uses a simple linear ramp. Real CMOS shot noise follows Poisson statistics. The visual difference may be subtle enough to not matter at this resolution, or it may look wrong on specific images.
+- The horizontal banding uses per-row Gaussian noise (sigma 3). Real sensor banding is often periodic and correlated with readout timing. This may look too random compared to real banding artifacts.
+
+### What I cut corners on
+- No reference image comparison — I don't have output from the actual 0.3MP Camera app to compare against. The acceptance test is spec-compliance, not visual matching.
+- No automated tests — the pipeline is tested visually through the harness, not programmatically.
+- The harness is not stripped from production builds. It should be gated behind `import.meta.env.DEV` or excluded from the build.
+- Color quantization truncates rather than rounding to nearest. This produces a slight darkening bias.
+
+### What I'd do differently with hindsight
+1. Would obtain reference images from the 0.3MP Camera app before writing the pipeline, so each stage could be tuned against a known target.
+2. Would consider rounding in the quantization step rather than truncation — `Math.round(val / 8) * 8` instead of `(val >> 3) << 3`.
+3. Would profile the pipeline's performance on large images in the browser before building the Decap widget integration (Phase 3).
+
+### Open questions for the next phase
+- Phase 2 is Decap + auth. Should I set up the Cloudflare Worker OAuth proxy now, or use a local dev proxy for testing?
+- The Decap `open_authoring` feature requires specific GitHub OAuth app configuration. Do you have a GitHub OAuth app set up, or should I create one?
+- Content images: Phase 0 flagged the duplication between content/ and public/. With Decap managing content, images will be committed directly to the repo. How should they be served — copied at build time, or should Decap write to a public-accessible path?
+
+### Red-team prompts
+1. "The Bayer simulation applies mosaic then demosaic on already-demosaiced RGB data. A real sensor captures raw single-channel data. Your simulation is double-processing — mosaic of RGB, then demosaic back. Does this produce the right artifacts, or does it just blur the image with some color fringing as a side effect?"
+2. "The noise function uses Math.random() which is not seedable. Two runs on the same image produce different output. Is this acceptable for a CMS pipeline where preview should match committed result?"
+3. "You're using canvas.toBlob for JPEG encoding. Browser JPEG encoders vary significantly between engines. An image processed in Chrome may look different from the same image processed in Firefox. Is this acceptable?"
+4. "The bloom function iterates every pixel and checks neighbors. On a 640x480 image that's 307,200 pixels times 8 neighbors. Combined with the Bayer pass (also per-pixel with neighbor lookups), is the total processing time acceptable for an in-browser upload widget?"
+5. "The pipeline has no color space awareness. Images with embedded ICC profiles (sRGB, Adobe RGB, P3) will be processed without conversion. The canvas API uses sRGB, so Adobe RGB or P3 images will be silently flattened. Is this documented anywhere?"
