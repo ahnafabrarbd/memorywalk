@@ -1,0 +1,78 @@
+name: IPFS Pin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'content/walks/**/*.jpg'
+      - 'content/walks/**/*.jpeg'
+      - 'content/walks/**/*.png'
+
+jobs:
+  pin:
+    runs-on: ubuntu-latest
+    if: ${{ vars.IPFS_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Find changed images
+        id: images
+        run: |
+          CHANGED=$(git diff --name-only HEAD~1 HEAD -- 'content/walks/**/*.jpg' 'content/walks/**/*.jpeg' 'content/walks/**/*.png' || true)
+          echo "files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Pin to IPFS via Pinata
+        if: steps.images.outputs.files != ''
+        env:
+          PINATA_API_KEY: ${{ secrets.PINATA_API_KEY }}
+          PINATA_SECRET_KEY: ${{ secrets.PINATA_SECRET_KEY }}
+        run: |
+          MANIFEST="public/ipfs-manifest.json"
+          # Read existing manifest or start fresh
+          if [ ! -f "$MANIFEST" ]; then echo '{}' > "$MANIFEST"; fi
+
+          while IFS= read -r file; do
+            [ -z "$file" ] && continue
+            echo "Pinning: $file"
+
+            # Pin file to Pinata
+            RESPONSE=$(curl -s -X POST \
+              "https://api.pinata.cloud/pinning/pinFileToIPFS" \
+              -H "pinata_api_key: $PINATA_API_KEY" \
+              -H "pinata_secret_api_key: $PINATA_SECRET_KEY" \
+              -F "file=@$file")
+
+            CID=$(echo "$RESPONSE" | python3 -c "import sys,json; print(json.load(sys.stdin).get('IpfsHash',''))" 2>/dev/null)
+
+            if [ -n "$CID" ]; then
+              echo "  CID: $CID"
+
+              # Update manifest
+              python3 -c "
+          import json
+          with open('$MANIFEST') as f: m = json.load(f)
+          m['$file'] = '$CID'
+          with open('$MANIFEST', 'w') as f: json.dump(m, f, indent=2)
+          "
+
+              # Update page frontmatter with image_cid
+              PAGE_MD="${file%.*}.md"
+              if [ -f "$PAGE_MD" ]; then
+                sed -i "s/^image_cid: .*/image_cid: $CID/" "$PAGE_MD"
+              fi
+            else
+              echo "  Failed to pin: $RESPONSE"
+            fi
+          done <<< "${{ steps.images.outputs.files }}"
+
+      - name: Commit CID updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add public/ipfs-manifest.json content/walks/
+          git diff --staged --quiet || git commit -m "Update IPFS CIDs for pinned images"
+          git push

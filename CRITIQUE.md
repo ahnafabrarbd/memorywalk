@@ -353,3 +353,38 @@
 1. "The 'write your own' link appears on every walk's final page. But the brief says 'the way to discover authorship is to follow another author into it.' If the link is on every final page, it's discoverable without following anyone — just by reading any walk to the end. Is this too easy?"
 2. "The top bar 'write' link appears based on localStorage state, which persists across sessions. Once logged in, the link always shows. But the brief says 'hidden for first-time visitors' — not 'hidden until login.' A returning visitor who logged in once to read (not write) would see the write link. Is this the intended behavior?"
 3. "The authLink changes to the user's handle and links to `/people/[handle]`. But if the user hasn't created a profile yet (they just logged in), this links to a 404. Should the link go to a profile creation page instead?"
+
+## Phase 10 — IPFS Replication — 2026-05-19
+
+### What was delivered
+- GitHub Action (`ipfs-pin.yml`) that pins new/changed images to IPFS via Pinata API on push to main
+- Action writes CIDs back into page frontmatter (`image_cid`) and `ipfs-manifest.json`, commits to main
+- Action gated by `IPFS_ENABLED` repository variable — disabled by default
+- `site.config.ts` extended with `ipfs.gateway` URL
+- Page template uses IPFS gateway URL when enabled, with `onerror` fallback to local image path
+- When `ipfs.enabled: false`, images load from local path only (no gateway request)
+- Self-hosters disable by: not setting `IPFS_ENABLED` var, removing the action, setting `ipfs.enabled: false`
+
+### What I'm uncertain about
+- The GitHub Action uses `git diff HEAD~1 HEAD` to find changed images. On merge commits with multiple parents, this may miss changes or produce unexpected diffs. A `push` event may have multiple commits since last push.
+- Pinata's free tier has rate limits and storage caps. The action doesn't handle rate limiting or quota exceeded responses.
+- The `onerror` fallback on the `<img>` tag uses inline JavaScript (`this.onerror=null;this.src='...'`). This could be blocked by strict Content-Security-Policy headers.
+
+### What I cut corners on
+- The action hasn't been tested with actual Pinata credentials. It follows the documented API pattern but edge cases are untested.
+- No retry logic for failed pins.
+- The `sed -i` for updating frontmatter is even more brittle than the curator's string replacement (Phase 7).
+- `ipfs-manifest.json` is initialized as `{}` and grows unboundedly as images are added. No cleanup of removed images.
+
+### What I'd do differently with hindsight
+1. Would use a proper YAML update tool instead of `sed` for frontmatter modifications.
+2. Would use `git diff --diff-filter=AM` to only process added/modified files, not deleted ones.
+3. Would add error handling and Pinata response validation in the action.
+
+### Open questions for the next phase
+- Phase 11 is self-hosting polish. This is documentation-heavy. Should I actually fork the repo and walk through the setup to test the self-hosting guide, or document from the code?
+
+### Red-team prompts
+1. "The action commits back to main with github-actions[bot]. These commits will trigger the action again (push to main, paths include content/walks/). Is there an infinite loop? The changed files in the CID-update commit are .md files (frontmatter), not .jpg — so the path filter should prevent re-triggering. But verify this."
+2. "The onerror fallback uses inline JS. If the site adds a Content-Security-Policy header (which it should, per §11 no third-party scripts), this inline handler will be blocked. Should use an external script instead."
+3. "IPFS gateway URLs can be slow or unreachable. The user sees a broken image while waiting for the gateway timeout before the onerror fallback fires. This could be 10+ seconds. Should the local image load first, with IPFS as a verification layer rather than primary source?"

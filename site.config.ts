@@ -4,6 +4,9 @@ export const siteConfig = {
   epigraph: "visual-textual records of walks that map the psyche against the geography it moves through",
   url: "",
   repoUrl: "https://github.com/ahnafabrarbd/memorywalk",
-  ipfs: { enabled: false },
+  ipfs: {
+    enabled: false,
+    gateway: "https://gateway.pinata.cloud/ipfs",
+  },
   curatorsFile: "./curators.json",
 };

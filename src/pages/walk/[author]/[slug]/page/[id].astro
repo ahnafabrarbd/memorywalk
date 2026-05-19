@@ -3,6 +3,7 @@ import { getCollection, render } from "astro:content";
 import Reader from "../../../../../layouts/Reader.astro";
 import PageNav from "../../../../../components/reader/PageNav.astro";
 import MiniMap from "../../../../../components/reader/MiniMap.astro";
+import { siteConfig } from "../../../../../../site.config";
 
 export async function getStaticPaths() {
   const allPages = await getCollection("pages");
@@ -85,7 +86,11 @@ if (page.body) {
   }
 }
 
-const imagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
+const localImagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
+const ipfsEnabled = siteConfig.ipfs.enabled && page.data.image_cid;
+const imagePath = ipfsEnabled
+  ? `${siteConfig.ipfs.gateway}/${page.data.image_cid}`
+  : localImagePath;
 const walkTitle = walk?.data.title ?? "untitled walk";
 
 // Determine if this is the final page (for "write your own" link)
@@ -100,7 +105,16 @@ const isLastPage =
     <MiniMap pages={geoPages} currentPageId={page.data.id} />
   )}
 
-  <img class="page-image" src={imagePath} alt="" />
+  {ipfsEnabled ? (
+    <img
+      class="page-image"
+      src={imagePath}
+      alt=""
+      onerror={`this.onerror=null;this.src='${localImagePath}';`}
+    />
+  ) : (
+    <img class="page-image" src={imagePath} alt="" />
+  )}
 
   <div class="page-body">
     <Content />
