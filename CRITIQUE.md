@@ -521,3 +521,11 @@ The original Phase 0 visual register failed. Specifically:
 1. "The editor builds in production. Anyone visiting /write/new can see the editing surface. §21 says 'only mounted in astro dev mode.' This is a spec violation."
 2. "Autosave only saves metadata (title, slug, tags). The actual content (text blocks, images) is lost on refresh. This makes the editor frustrating for real use."
 3. "The 0.3MP processing runs synchronously in the main thread via canvas2D. On a large image (12MP phone photo), this could block the UI for seconds."
+
+## Phase 3 — Linear Walks Polished + Indexer — 2026-05-19
+
+### What was delivered
+- Restored `walks-index.json` and `collisions.json` Astro endpoints with full collision computation
+- Walk listing fully styled in new visual register with sort/filter
+- Linear walks polished end-to-end: click-to-advance, big titles, image dominating viewport
+- 19 pages, sub-1s build
