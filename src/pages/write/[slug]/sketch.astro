@@ -1,0 +1,393 @@
+---
+import "../../../components/shared/tokens.css";
+import ShaderBackground from "../../../components/shared/ShaderBackground.astro";
+import { getCollection } from "astro:content";
+import { siteConfig } from "../../../../site.config";
+
+export async function getStaticPaths() {
+  const walks = await getCollection("walks");
+  const allPages = await getCollection("pages");
+
+  return walks.map((w) => {
+    const parts = w.id.split("/");
+    const author = parts[0];
+    const slug = parts[1];
+
+    const walkPages = allPages
+      .filter((p) => p.id.startsWith(`${author}/${slug}/`))
+      .sort((a, b) => a.id.localeCompare(b.id))
+      .map((p) => ({ id: p.data.id }));
+
+    return {
+      params: { slug },
+      props: { walk: w, pages: walkPages },
+    };
+  });
+}
+
+const { walk, pages } = Astro.props;
+const { slug } = Astro.params;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>sketch — {walk.data.title} — {siteConfig.name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --color-text: #fafafa;
+        --color-accent-red: #ff3b3b;
+        --color-accent-green: #3bff8a;
+        --color-accent-blue: #3b8aff;
+        --color-accent-yellow: #ffd23b;
+        --color-dim: rgba(250, 250, 250, 0.4);
+        --font-display: "Space Grotesk", system-ui, sans-serif;
+        --size-label: clamp(0.75rem, 1vw, 0.875rem);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { background: #0a0010; }
+      body { min-height: 100vh; overflow: hidden; color: var(--color-text); font-family: var(--font-display); }
+
+      .editor-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 20;
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .editor-header a, .editor-header button {
+        color: var(--color-dim);
+        background: none;
+        border: none;
+        font: inherit;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .editor-header a:hover, .editor-header button:hover {
+        color: var(--color-accent-red);
+      }
+
+      .save-btn {
+        color: var(--color-accent-green) !important;
+      }
+
+      .sketch-svg {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        cursor: crosshair;
+      }
+
+      .node-editor {
+        position: fixed;
+        z-index: 30;
+        background: rgba(0,0,0,0.9);
+        border: 1px solid var(--color-accent-red);
+        padding: 0.75rem;
+        font-size: var(--size-label);
+        display: none;
+      }
+
+      .node-editor input, .node-editor select {
+        background: transparent;
+        color: var(--color-text);
+        border: 1px solid var(--color-dim);
+        font: inherit;
+        padding: 0.3rem 0.5rem;
+        width: 180px;
+        display: block;
+        margin-bottom: 0.5rem;
+      }
+
+      .node-editor button {
+        background: none;
+        border: 1px solid var(--color-accent-red);
+        color: var(--color-accent-red);
+        font: inherit;
+        padding: 0.3rem 0.75rem;
+        cursor: pointer;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      .hint {
+        position: fixed;
+        bottom: 1rem;
+        left: 50%;
+        transform: translateX(-50%);
+        font-size: var(--size-label);
+        color: var(--color-dim);
+        z-index: 20;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+    </style>
+  </head>
+  <body>
+    <ShaderBackground />
+
+    <div class="editor-header">
+      <a href={`/write`}>back</a>
+      <span style="color: var(--color-text);">{walk.data.title} — sketch</span>
+      <button class="save-btn" id="saveBtn">save</button>
+    </div>
+
+    <svg class="sketch-svg" id="sketchSvg"></svg>
+
+    <div class="node-editor" id="nodeEditor">
+      <input type="text" id="nodeLabelInput" placeholder="label" />
+      <select id="nodePageSelect">
+        <option value="">no linked page</option>
+        {pages.map((p: { id: string }) => (
+          <option value={p.id}>{p.id}</option>
+        ))}
+      </select>
+      <button id="nodeDeleteBtn">delete</button>
+    </div>
+
+    <div class="hint">click to place node · drag between nodes to connect · right-click to edit</div>
+
+    <script define:vars={{ slug, pagesJSON: JSON.stringify(pages) }}>
+      const svg = document.getElementById("sketchSvg");
+      const ns = "http://www.w3.org/2000/svg";
+      const nodeEditor = document.getElementById("nodeEditor");
+      const nodeLabelInput = document.getElementById("nodeLabelInput");
+      const nodePageSelect = document.getElementById("nodePageSelect");
+      const nodeDeleteBtn = document.getElementById("nodeDeleteBtn");
+      const saveBtn = document.getElementById("saveBtn");
+
+      const storageKey = `sketch:${slug}`;
+
+      let nodes = [];
+      let edges = [];
+      let nextId = 1;
+      let dragFrom = null;
+      let dragLine = null;
+      let editingNode = null;
+      let isDraggingNode = false;
+      let dragTarget = null;
+
+      // Load from localStorage
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const data = JSON.parse(saved);
+        nodes = data.nodes || [];
+        edges = data.edges || [];
+        nextId = nodes.length > 0 ? Math.max(...nodes.map((n) => parseInt(n.id.replace("n", "")))) + 1 : 1;
+      }
+
+      function save() {
+        const data = { nodes, edges, canvas: { aspect: window.innerWidth / window.innerHeight } };
+        localStorage.setItem(storageKey, JSON.stringify(data));
+      }
+
+      function render() {
+        svg.innerHTML = "";
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        // Edges
+        for (const edge of edges) {
+          const from = nodes.find((n) => n.id === edge.from);
+          const to = nodes.find((n) => n.id === edge.to);
+          if (!from || !to) continue;
+
+          const x1 = from.x * w, y1 = from.y * h;
+          const x2 = to.x * w, y2 = to.y * h;
+          const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+          const dx = x2 - x1, dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+
+          const path = document.createElementNS(ns, "path");
+          path.setAttribute("d", `M${x1},${y1} Q${mx + (-dy/len)*8},${my + (dx/len)*8} ${x2},${y2}`);
+          path.setAttribute("stroke", "#fafafa");
+          path.setAttribute("stroke-width", "1.5");
+          path.setAttribute("fill", "none");
+          path.setAttribute("opacity", "0.5");
+          svg.appendChild(path);
+        }
+
+        // Nodes
+        for (const node of nodes) {
+          const cx = node.x * w, cy = node.y * h;
+          const isLinked = !!node.linked_page;
+
+          const circle = document.createElementNS(ns, "circle");
+          circle.setAttribute("cx", String(cx));
+          circle.setAttribute("cy", String(cy));
+          circle.setAttribute("r", "6");
+          circle.setAttribute("fill", isLinked ? "#3bff8a" : "rgba(250,250,250,0.4)");
+          circle.setAttribute("cursor", "pointer");
+          circle.setAttribute("data-node-id", node.id);
+          svg.appendChild(circle);
+
+          if (node.label) {
+            const text = document.createElementNS(ns, "text");
+            text.setAttribute("x", String(cx));
+            text.setAttribute("y", String(cy - 14));
+            text.setAttribute("text-anchor", "middle");
+            text.setAttribute("fill", "rgba(250,250,250,0.4)");
+            text.setAttribute("font-family", "Space Grotesk, system-ui, sans-serif");
+            text.setAttribute("font-size", "11");
+            text.textContent = node.label;
+            svg.appendChild(text);
+          }
+        }
+      }
+
+      // Click to place node
+      svg.addEventListener("click", (e) => {
+        if (isDraggingNode || dragFrom) return;
+        const target = e.target;
+        if (target.tagName === "circle") return;
+
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+        const node = {
+          id: "n" + nextId++,
+          label: "",
+          x: e.clientX / w,
+          y: e.clientY / h,
+          linked_page: null,
+        };
+        nodes.push(node);
+        save();
+        render();
+      });
+
+      // Right-click to edit node
+      svg.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        const target = e.target;
+        if (target.tagName !== "circle") return;
+
+        const nodeId = target.getAttribute("data-node-id");
+        const node = nodes.find((n) => n.id === nodeId);
+        if (!node) return;
+
+        editingNode = node;
+        nodeLabelInput.value = node.label || "";
+        nodePageSelect.value = node.linked_page || "";
+        nodeEditor.style.display = "block";
+        nodeEditor.style.left = e.clientX + "px";
+        nodeEditor.style.top = e.clientY + "px";
+      });
+
+      // Drag to create edge
+      let mouseDownOnNode = false;
+      svg.addEventListener("mousedown", (e) => {
+        const target = e.target;
+        if (target.tagName === "circle") {
+          mouseDownOnNode = true;
+          dragFrom = target.getAttribute("data-node-id");
+
+          dragLine = document.createElementNS(ns, "line");
+          const node = nodes.find((n) => n.id === dragFrom);
+          const w = window.innerWidth, h = window.innerHeight;
+          dragLine.setAttribute("x1", String(node.x * w));
+          dragLine.setAttribute("y1", String(node.y * h));
+          dragLine.setAttribute("x2", String(e.clientX));
+          dragLine.setAttribute("y2", String(e.clientY));
+          dragLine.setAttribute("stroke", "#ff3b3b");
+          dragLine.setAttribute("stroke-width", "1");
+          dragLine.setAttribute("opacity", "0.5");
+          svg.appendChild(dragLine);
+        }
+      });
+
+      svg.addEventListener("mousemove", (e) => {
+        if (dragLine) {
+          dragLine.setAttribute("x2", String(e.clientX));
+          dragLine.setAttribute("y2", String(e.clientY));
+        }
+      });
+
+      svg.addEventListener("mouseup", (e) => {
+        if (dragFrom && dragLine) {
+          const target = e.target;
+          if (target.tagName === "circle") {
+            const toId = target.getAttribute("data-node-id");
+            if (toId && toId !== dragFrom) {
+              const exists = edges.some((edge) =>
+                (edge.from === dragFrom && edge.to === toId) ||
+                (edge.from === toId && edge.to === dragFrom)
+              );
+              if (!exists) {
+                edges.push({ from: dragFrom, to: toId });
+                save();
+              }
+            }
+          }
+          dragLine.remove();
+          dragLine = null;
+          dragFrom = null;
+          render();
+        }
+        mouseDownOnNode = false;
+      });
+
+      // Node editor actions
+      nodeLabelInput.addEventListener("input", () => {
+        if (editingNode) {
+          editingNode.label = nodeLabelInput.value;
+          save();
+          render();
+        }
+      });
+
+      nodePageSelect.addEventListener("change", () => {
+        if (editingNode) {
+          editingNode.linked_page = nodePageSelect.value || null;
+          save();
+          render();
+        }
+      });
+
+      nodeDeleteBtn.addEventListener("click", () => {
+        if (editingNode) {
+          nodes = nodes.filter((n) => n.id !== editingNode.id);
+          edges = edges.filter((e) => e.from !== editingNode.id && e.to !== editingNode.id);
+          editingNode = null;
+          nodeEditor.style.display = "none";
+          save();
+          render();
+        }
+      });
+
+      // Close editor on click outside
+      document.addEventListener("click", (e) => {
+        if (!nodeEditor.contains(e.target) && e.target !== nodeEditor) {
+          nodeEditor.style.display = "none";
+          editingNode = null;
+        }
+      });
+
+      // Save button
+      saveBtn.addEventListener("click", () => {
+        save();
+        const data = { nodes, edges, canvas: { aspect: window.innerWidth / window.innerHeight } };
+        console.log("SKETCH DATA:", JSON.stringify(data, null, 2));
+        saveBtn.textContent = "saved";
+        setTimeout(() => { saveBtn.textContent = "save"; }, 1500);
+      });
+
+      window.addEventListener("resize", render);
+      render();
+    </script>
+  </body>
+</html>

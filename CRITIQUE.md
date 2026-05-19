@@ -529,3 +529,11 @@ The original Phase 0 visual register failed. Specifically:
 - Walk listing fully styled in new visual register with sort/filter
 - Linear walks polished end-to-end: click-to-advance, big titles, image dominating viewport
 - 19 pages, sub-1s build
+
+## Phase 4 — Node-Graph Sketch Tool — 2026-05-19
+
+### What was delivered
+- Sketch reader at `/walk/[slug]/sketch`: SVG rendering of node graph over shader background, linked nodes in accent green, hover labels, click linked nodes to navigate to walk pages
+- Sketch editor at `/write/[slug]/sketch`: click to place nodes, drag between nodes to create edges (quadratic bezier with perpendicular offset), right-click to edit label/link page/delete, saves to localStorage
+- Hand-drawn edge feel via bezier curves with 8px perpendicular control point offset
+- Both surfaces use the shader background, matching the site's visual register

@@ -1,0 +1,211 @@
+---
+import "../../../components/shared/tokens.css";
+import { getCollection } from "astro:content";
+import ShaderBackground from "../../../components/shared/ShaderBackground.astro";
+import { siteConfig } from "../../../../site.config";
+
+export async function getStaticPaths() {
+  const walks = await getCollection("walks");
+  return walks.map((w) => {
+    const parts = w.id.split("/");
+    return { params: { slug: parts[1] }, props: { walk: w } };
+  });
+}
+
+const { walk } = Astro.props;
+const { slug } = Astro.params;
+const walkTitle = walk.data.title;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{walkTitle} — sketch — {siteConfig.name}</title>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <style>
+      :root {
+        --color-text: #fafafa;
+        --color-accent-red: #ff3b3b;
+        --color-accent-green: #3bff8a;
+        --color-accent-blue: #3b8aff;
+        --color-dim: rgba(250, 250, 250, 0.4);
+        --font-display: "Space Grotesk", system-ui, sans-serif;
+        --size-label: clamp(0.75rem, 1vw, 0.875rem);
+      }
+
+      * { box-sizing: border-box; margin: 0; padding: 0; }
+      html { background: #0a0010; }
+      body { min-height: 100vh; overflow: hidden; color: var(--color-text); font-family: var(--font-display); }
+      a { color: inherit; text-decoration: none; }
+      a:hover { color: var(--color-accent-red); }
+
+      .sketch-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        padding: 1rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        z-index: 20;
+        font-size: var(--size-label);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .sketch-header a { color: var(--color-dim); }
+
+      .sketch-svg {
+        position: fixed;
+        inset: 0;
+        z-index: 5;
+        cursor: crosshair;
+      }
+
+      .sketch-svg .edge {
+        stroke: var(--color-text);
+        stroke-width: 1.5;
+        fill: none;
+        opacity: 0.5;
+      }
+
+      .sketch-svg .node {
+        cursor: pointer;
+        transition: r 150ms;
+      }
+
+      .sketch-svg .node:hover {
+        r: 8;
+      }
+
+      .sketch-svg .node-label {
+        font-family: var(--font-display);
+        font-size: 11px;
+        fill: var(--color-dim);
+        pointer-events: none;
+        text-anchor: middle;
+      }
+
+      .sketch-svg .node-linked {
+        fill: var(--color-accent-green);
+      }
+
+      .sketch-svg .node-unlinked {
+        fill: var(--color-dim);
+      }
+    </style>
+  </head>
+  <body>
+    <ShaderBackground />
+
+    <div class="sketch-header">
+      <a href={`/walk/${slug}`}>{walkTitle}</a>
+      <a href={`/walks`}>back</a>
+    </div>
+
+    <svg class="sketch-svg" id="sketchSvg"></svg>
+
+    <script define:vars={{ slug, walkTitle }}>
+      const svg = document.getElementById("sketchSvg");
+      const ns = "http://www.w3.org/2000/svg";
+
+      // Load sketch data
+      let sketchData = { nodes: [], edges: [], canvas: { aspect: 1.5 } };
+
+      async function loadSketch() {
+        try {
+          const res = await fetch(`/content-sketch/${slug}/sketch.json`);
+          if (res.ok) {
+            sketchData = await res.json();
+            renderSketch();
+          }
+        } catch {
+          // No sketch data — render empty
+        }
+      }
+
+      function renderSketch() {
+        svg.innerHTML = "";
+        const w = window.innerWidth;
+        const h = window.innerHeight;
+
+        // Draw edges
+        for (const edge of sketchData.edges) {
+          const from = sketchData.nodes.find((n) => n.id === edge.from);
+          const to = sketchData.nodes.find((n) => n.id === edge.to);
+          if (!from || !to) continue;
+
+          const x1 = from.x * w;
+          const y1 = from.y * h;
+          const x2 = to.x * w;
+          const y2 = to.y * h;
+
+          // Quadratic bezier with slight perpendicular offset
+          const mx = (x1 + x2) / 2;
+          const my = (y1 + y2) / 2;
+          const dx = x2 - x1;
+          const dy = y2 - y1;
+          const len = Math.sqrt(dx * dx + dy * dy);
+          const nx = -dy / len * 8;
+          const ny = dx / len * 8;
+
+          const path = document.createElementNS(ns, "path");
+          path.setAttribute("d", `M${x1},${y1} Q${mx + nx},${my + ny} ${x2},${y2}`);
+          path.setAttribute("class", "edge");
+          svg.appendChild(path);
+        }
+
+        // Draw nodes
+        for (const node of sketchData.nodes) {
+          const cx = node.x * w;
+          const cy = node.y * h;
+          const isLinked = !!node.linked_page;
+
+          const circle = document.createElementNS(ns, "circle");
+          circle.setAttribute("cx", String(cx));
+          circle.setAttribute("cy", String(cy));
+          circle.setAttribute("r", "6");
+          circle.setAttribute("class", `node ${isLinked ? "node-linked" : "node-unlinked"}`);
+
+          if (isLinked) {
+            circle.addEventListener("click", () => {
+              window.location.href = `/walk/${slug}/page/${node.linked_page}`;
+            });
+          }
+
+          circle.addEventListener("mouseenter", () => {
+            const label = document.querySelector(`[data-node-label="${node.id}"]`);
+            if (label) label.style.opacity = "1";
+          });
+
+          circle.addEventListener("mouseleave", () => {
+            const label = document.querySelector(`[data-node-label="${node.id}"]`);
+            if (label) label.style.opacity = "0";
+          });
+
+          svg.appendChild(circle);
+
+          // Label (hidden until hover)
+          if (node.label) {
+            const text = document.createElementNS(ns, "text");
+            text.setAttribute("x", String(cx));
+            text.setAttribute("y", String(cy - 14));
+            text.setAttribute("class", "node-label");
+            text.setAttribute("data-node-label", node.id);
+            text.style.opacity = "0";
+            text.style.transition = "opacity 150ms";
+            text.textContent = node.label;
+            svg.appendChild(text);
+          }
+        }
+      }
+
+      window.addEventListener("resize", renderSketch);
+      loadSketch();
+    </script>
+  </body>
+</html>
