@@ -5,13 +5,31 @@ import List from "../layouts/List.astro";
 <List title="nexus">
   <div class="nexus-page">
     <h1 class="page-title">nexus</h1>
-    <p class="stub-note">map pending — will be rebuilt from Weather Journal</p>
+    <div class="nexus-controls">
+      <label class="filter-toggle">
+        <input type="checkbox" id="filterGeo" checked />
+        <span>geographic</span>
+      </label>
+      <label class="filter-toggle">
+        <input type="checkbox" id="filterTemporal" checked />
+        <span>temporal</span>
+      </label>
+      <label class="filter-toggle">
+        <input type="checkbox" id="filterSemantic" checked />
+        <span>semantic</span>
+      </label>
+    </div>
+    <div id="nexusMap" class="nexus-map"></div>
+    <div id="threadsPanel" class="threads-panel" style="display:none;">
+      <h2 class="threads-heading">threads</h2>
+      <ul id="threadsList" class="threads-list"></ul>
+    </div>
   </div>
 </List>
 
 <style>
   .nexus-page {
-    padding-top: 2rem;
+    padding-top: 1rem;
   }
 
   .page-title {
@@ -21,8 +39,159 @@ import List from "../layouts/List.astro";
     margin-bottom: 1rem;
   }
 
-  .stub-note {
-    font-size: var(--size-body);
-    color: var(--color-dim);
+  .nexus-controls {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
   }
+
+  .filter-toggle {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--color-text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .filter-toggle input { cursor: pointer; }
+
+  .nexus-map {
+    width: 100%;
+    height: calc(100vh - 14rem);
+    min-height: 300px;
+    border: 1px solid var(--color-rule);
+  }
+
+  .threads-panel {
+    margin-top: 1.5rem;
+  }
+
+  .threads-heading {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--color-accent-green);
+    margin-bottom: 0.75rem;
+  }
+
+  .threads-list {
+    list-style: none;
+  }
+
+  .threads-list :global(li) {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    font-size: var(--size-label);
+  }
+
+  .threads-list :global(a) {
+    color: var(--color-text);
+  }
+
+  .threads-list :global(.thread-detail) {
+    color: var(--color-accent-blue);
+    font-size: var(--size-label);
+  }
+</style>
+
+<script>
+  import L from "leaflet";
+  import "leaflet/dist/leaflet.css";
+
+  const map = L.map("nexusMap", {
+    zoomControl: false,
+    attributionControl: false,
+  }).setView([37.78, -122.41], 13);
+
+  L.tileLayer(
+    "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
+    { maxZoom: 19 },
+  ).addTo(map);
+
+  const geoLines: L.Polyline[] = [];
+  const temporalLines: L.Polyline[] = [];
+
+  Promise.all([
+    fetch("/walks-index.json").then((r) => r.json()),
+    fetch("/collisions.json").then((r) => r.json()),
+  ]).then(([walks, collisions]) => {
+    const coordMap = new Map();
+    const bounds: [number, number][] = [];
+
+    for (const walk of walks) {
+      for (const page of walk.pages) {
+        if (!page.coords) continue;
+        const key = `${walk.author}/${walk.slug}/${page.id}`;
+        coordMap.set(key, page.coords);
+
+        L.circleMarker(page.coords, {
+          radius: 5,
+          fillColor: "#ff3b3b",
+          fillOpacity: 0.7,
+          stroke: false,
+        })
+          .on("click", () => {
+            window.open(`/walk/${walk.slug}/page/${page.id}`, "_blank");
+          })
+          .addTo(map);
+
+        bounds.push(page.coords);
+      }
+    }
+
+    for (const c of collisions.geographic) {
+      const a = coordMap.get(`${c.a.walkAuthor}/${c.a.walkSlug}/${c.a.pageId}`);
+      const b = coordMap.get(`${c.b.walkAuthor}/${c.b.walkSlug}/${c.b.pageId}`);
+      if (!a || !b) continue;
+      const line = L.polyline([a, b], { color: "#fafafa", opacity: 0.3, weight: 1 }).addTo(map);
+      geoLines.push(line);
+    }
+
+    for (const c of collisions.temporal) {
+      const a = coordMap.get(`${c.a.walkAuthor}/${c.a.walkSlug}/${c.a.pageId}`);
+      const b = coordMap.get(`${c.b.walkAuthor}/${c.b.walkSlug}/${c.b.pageId}`);
+      if (!a || !b) continue;
+      const line = L.polyline([a, b], { color: "#fafafa", opacity: 0.3, weight: 1, dashArray: "4 4" }).addTo(map);
+      temporalLines.push(line);
+    }
+
+    const threadsList = document.getElementById("threadsList")!;
+    const threadsPanel = document.getElementById("threadsPanel")!;
+    if (collisions.semantic.length > 0) {
+      threadsPanel.style.display = "block";
+      for (const c of collisions.semantic) {
+        const li = document.createElement("li");
+        const detail = [];
+        if (c.shared_tags?.length) detail.push(c.shared_tags.map((t: string) => "#" + t).join(" "));
+        if (c.shared_words?.length) detail.push(c.shared_words.join(", "));
+        li.innerHTML = `<a href="/walk/${c.a.walkSlug}">${c.a.walkTitle}</a> &mdash; <a href="/walk/${c.b.walkSlug}">${c.b.walkTitle}</a><br><span class="thread-detail">${detail.join(" · ")}</span>`;
+        threadsList.appendChild(li);
+      }
+    }
+
+    if (bounds.length > 0) map.fitBounds(L.latLngBounds(bounds), { padding: [40, 40] });
+  });
+
+  const filterGeo = document.getElementById("filterGeo") as HTMLInputElement;
+  const filterTemporal = document.getElementById("filterTemporal") as HTMLInputElement;
+  const filterSemantic = document.getElementById("filterSemantic") as HTMLInputElement;
+
+  filterGeo.addEventListener("change", () => geoLines.forEach((l) => filterGeo.checked ? l.addTo(map) : l.remove()));
+  filterTemporal.addEventListener("change", () => temporalLines.forEach((l) => filterTemporal.checked ? l.addTo(map) : l.remove()));
+  filterSemantic.addEventListener("change", () => {
+    const p = document.getElementById("threadsPanel")!;
+    p.style.display = filterSemantic.checked && p.querySelector("li") ? "block" : "none";
+  });
+</script>
+
+<style is:global>
+  .leaflet-container { background: #0a0010 !important; }
 </style>
