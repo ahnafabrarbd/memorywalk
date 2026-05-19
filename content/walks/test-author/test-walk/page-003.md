@@ -2,6 +2,7 @@
 id: page-003
 image: page-003.jpg
 image_cid: null
+coords: [37.7755, -122.4182]
 captured_at: 2025-11-14T15:03:00Z
 ---
 

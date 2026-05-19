@@ -184,3 +184,40 @@
 2. "The word count check runs at page render time, not at content validation time. A walk with a >400-word page will fail the build, but the error message points to the render step, not the content file. Is the error message clear enough for an author to understand what to fix?"
 3. "The sort/filter controls use native HTML selects. On the dark background (#000) with white text, the select dropdown rendering is entirely browser-dependent and may be unreadable on some platforms (e.g., Windows Chrome renders dark text on dark background in dropdowns). Have you tested cross-browser?"
 4. "walks-index.json includes all page data (image paths, coords, timestamps) for every published walk. As the site grows, this file could become very large. The nexus map (Phase 5) needs it, but should readers download the full index just to view a walk listing?"
+
+## Phase 5 — The Nexus Map — 2026-05-19
+
+### What was delivered
+- Leaflet map at `/nexus` with CARTO dark_nolabels tiles on a black background
+- Every page with coords plotted as a white 50%-opacity circle marker; click opens page in new tab
+- Geographic collision computation (haversine distance, 50m threshold, cross-walk only) in `src/lib/collisions/`
+- `collisions.json` generated at build time as an Astro endpoint
+- Collision lines drawn as 1px white 30%-opacity polylines; hover tooltip shows both walk titles and distance
+- Top-left filter panel with geographic toggle checkbox
+- Custom popup/tooltip styles matching the dark palette (no Leaflet default chrome)
+- Test walk pages updated with coords near San Francisco
+
+### What I'm uncertain about
+- With only one test walk, geographic collisions are empty (same-walk pages are excluded). The collision computation hasn't been tested with actual cross-walk data. The haversine implementation is standard but edge cases (antipodal points, exact same location) haven't been exercised.
+- Leaflet's CSS is imported in the client-side script via `import "leaflet/dist/leaflet.css"`. Astro/Vite should handle this, but it may cause FOUC (flash of unstyled content) as the CSS loads after the map container renders.
+- The map starts at a hardcoded view center (37.775, -122.419) and then fits bounds when data loads. If no pages have coords, the map shows empty San Francisco. Should show a centered "no data" message instead.
+
+### What I cut corners on
+- Map center is hardcoded to San Francisco (the test data location). Should compute the center from all available coords or default to a world view.
+- No click-on-dot-to-popup interaction refinement — the popup uses basic HTML with inline styles rather than a proper styled component.
+- The filter panel only has "geographic" since temporal and semantic are Phase 8. The UI structure is ready for those additions.
+- No loading state while fetching walks-index.json and collisions.json.
+
+### What I'd do differently with hindsight
+1. Would create a second test walk with overlapping coords to actually test collision line rendering.
+2. Would default the map to a world view (zoom level 2) and let fitBounds handle the zoom, rather than hardcoding a city-level view.
+3. Would add a loading indicator or "computing..." message during the async data fetch.
+
+### Open questions for the next phase
+- Phase 6 is branching + geo-anchored walk structures. The geo-anchored structure needs a mini-map within the reader (Register A). Should this mini-map reuse Leaflet or use a simpler canvas-based approach to avoid loading Leaflet on every walk page?
+
+### Red-team prompts
+1. "The nexus fetches walks-index.json which contains all walk data including summaries and page details. This is the entire site's content index. For a site with hundreds of walks, this could be megabytes. Is there a lighter endpoint that just provides coords and walk references?"
+2. "The collision computation is O(n^2) over all geo-tagged pages. With 1000 pages that's 500K comparisons. At build time this is fine, but what about a site with 10K pages? Is there a spatial index (quadtree, geohash) consideration?"
+3. "Leaflet's default marker images (marker-icon.png, marker-shadow.png) are bundled with the library but you're using circle markers instead. Are the unused marker image assets still being included in the build?"
+4. "The map click handler opens pages in a new tab (`window.open`). On mobile, this may be blocked by popup blockers. Should the click navigate in the current tab instead?"
