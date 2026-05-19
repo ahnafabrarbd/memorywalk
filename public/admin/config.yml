@@ -1,0 +1,70 @@
+backend:
+  name: github
+  repo: ahnafabrarbd/memorywalk
+  branch: main
+  open_authoring: true
+
+publish_mode: editorial_workflow
+
+media_folder: content/walks
+public_folder: /content-images
+
+collections:
+  - name: walks
+    label: Walks
+    label_singular: Walk
+    folder: content/walks
+    path: "{{author}}/{{slug}}/walk"
+    create: true
+    slug: "{{fields.slug}}"
+    media_folder: ""
+    public_folder: ""
+    fields:
+      - { label: Title, name: title, widget: string }
+      - { label: Slug, name: slug, widget: string, pattern: ['^[a-z0-9-]+$', 'lowercase letters, numbers, and hyphens only'] }
+      - { label: Author, name: author, widget: string }
+      - label: Structure
+        name: structure
+        widget: select
+        options:
+          - { label: Linear, value: linear }
+          - { label: Branching, value: branching }
+          - { label: Geo-anchored, value: geo-anchored }
+        default: linear
+      - { label: Started, name: started_at, widget: datetime }
+      - { label: Ended, name: ended_at, widget: datetime }
+      - { label: Summary, name: summary, widget: string, pattern: ['^.{0,200}$', '200 characters maximum'] }
+      - { label: Tags, name: tags, widget: list, default: [] }
+      - { label: Curated, name: curated, widget: boolean, default: false }
+      - { label: Curated at, name: curated_at, widget: datetime, required: false }
+      - { label: License, name: license, widget: string, default: CC-BY-NC-SA-4.0 }
+      - { label: IPFS CID, name: ipfs_cid, widget: string, required: false }
+
+  - name: pages
+    label: Pages
+    label_singular: Page
+    folder: content/walks
+    path: "{{walk_author}}/{{walk_slug}}/{{slug}}"
+    create: true
+    slug: "{{fields.id}}"
+    fields:
+      - { label: Page ID, name: id, widget: string, pattern: ['^page-[0-9]{3}$', 'must be page-001 format'] }
+      - { label: Walk Author, name: walk_author, widget: string, hint: 'github handle of the walk author' }
+      - { label: Walk Slug, name: walk_slug, widget: string, hint: 'slug of the parent walk' }
+      - { label: Image, name: image, widget: image }
+      - { label: Image CID, name: image_cid, widget: string, required: false }
+- { label: Captured at, name: captured_at, widget: datetime }
+      - { label: Next page, name: next, widget: string, required: false, hint: 'page ID of next page (linear walks)' }
+      - { label: Links, name: links, widget: list, required: false, hint: 'page IDs this page links to (branching walks)' }
+      - { label: Body, name: body, widget: markdown }
+
+  - name: people
+    label: People
+    label_singular: Person
+    folder: content/people
+    create: true
+    slug: "{{fields.handle}}"
+    fields:
+      - { label: Handle, name: handle, widget: string, pattern: ['^[a-z0-9-]+$', 'lowercase letters, numbers, and hyphens only'] }
+      - { label: Link, name: link, widget: string }
+      - { label: Bio, name: body, widget: markdown, hint: '50 words maximum' }

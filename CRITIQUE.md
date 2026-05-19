@@ -77,3 +77,39 @@
 3. "You're using canvas.toBlob for JPEG encoding. Browser JPEG encoders vary significantly between engines. An image processed in Chrome may look different from the same image processed in Firefox. Is this acceptable?"
 4. "The bloom function iterates every pixel and checks neighbors. On a 640x480 image that's 307,200 pixels times 8 neighbors. Combined with the Bayer pass (also per-pixel with neighbor lookups), is the total processing time acceptable for an in-browser upload widget?"
 5. "The pipeline has no color space awareness. Images with embedded ICC profiles (sRGB, Adobe RGB, P3) will be processed without conversion. The canvas API uses sRGB, so Adobe RGB or P3 images will be silently flattened. Is this documented anywhere?"
+
+## Phase 2 — Decap CMS + Auth — 2026-05-19
+
+### What was delivered
+- Decap CMS mounted at `/admin` with GitHub backend, editorial workflow, and open authoring enabled
+- CMS config defines three collections: walks, pages, and people, matching the content model from §6
+- Cloudflare Worker OAuth proxy (~50 lines) in `oauth-proxy/` with wrangler config and setup documentation
+- OAuth proxy implements the standard Decap postMessage handshake pattern for token exchange
+
+### What I'm uncertain about
+- The Decap `path` template for walks (`{{author}}/{{slug}}/walk`) may not work correctly with open authoring's fork-based workflow. When a non-collaborator creates a walk, Decap needs to create the file at `content/walks/[author]/[slug]/walk.md` on their fork — the nested directory creation through the GitHub API may fail or behave unexpectedly.
+- The pages collection uses `walk_author` and `walk_slug` fields to build the path. This requires the author to manually type their handle and walk slug for every page, which is extremely error-prone. Phase 3/4 should address this with a better UX (perhaps a relation widget or auto-population).
+- I haven't tested open authoring end-to-end. The config follows the documented pattern, but Decap's open authoring has known edge cases with nested folder collections.
+- The OAuth proxy uses template literals in the postMessage response body, which means the access token is embedded in an HTML string. This is the standard pattern but worth noting for security review.
+
+### What I cut corners on
+- No end-to-end test of the OAuth flow — would require deploying the Cloudflare Worker and creating a GitHub OAuth app, which are user-dependent steps.
+- Removed coords fields from Decap page config because the tuple format (`[lat, lng]`) doesn't map to Decap widgets. Geo-anchored walks (Phase 6) will need a custom widget or separate fields with a build-time transform.
+- The `media_folder` and `public_folder` settings are set to global defaults. In practice, each walk's images should be co-located with its markdown, but Decap's per-collection media folder with nested paths is tricky.
+- No `local_backend` toggle in the config — local testing requires manually editing config.yml.
+
+### What I'd do differently with hindsight
+1. Would test open authoring with a fork before claiming the config works. The nested path template is the highest-risk piece.
+2. Would add a `local_backend: true` flag gated behind an environment variable rather than requiring manual config edits for local testing.
+3. Would design the pages collection as a nested collection under walks rather than a flat folder collection, if Decap supported it.
+
+### Open questions for the next phase
+- Phase 3 is the custom processor widget for Decap. This replaces the default image widget so processing happens at upload. How should the widget surface the before/after preview — inline in the editor, or in a modal?
+- Should the processor widget auto-populate `captured_at` and `coords` fields from EXIF, or just display them for the author to confirm and copy?
+
+### Red-team prompts
+1. "The Decap pages collection requires the author to manually type walk_author and walk_slug for every page. What happens when they typo the slug? The page goes to the wrong directory on the fork. How would this be caught before merge?"
+2. "Open authoring forks the entire repo including all other authors' content. A malicious author could modify other people's walks in their PR. What review process catches this? The brief says curators merge via GitHub PR review, but does that scale?"
+3. "The OAuth proxy returns the access token in an HTML page that uses postMessage. If the window.opener check is missing or the origin isn't validated, this is a token exfiltration vector. Is the postMessage origin locked down?"
+4. "Decap's editorial workflow stores draft state as GitHub PR metadata. If the GitHub API rate limit is hit during a editing session, the author loses unsaved work. Is there any local persistence or recovery?"
+5. "The config.yml is committed to the repo and contains the repo name. A fork running their own instance needs to edit this file. But site.config.ts was supposed to be the single config source. Now there are two files to edit."
