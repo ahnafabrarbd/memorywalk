@@ -1,0 +1,39 @@
+---
+import List from "../layouts/List.astro";
+import { siteConfig } from "../../site.config";
+---
+
+<List title="about">
+  <div class="about-page">
+    <h1 class="page-heading">about</h1>
+    <div class="about-body">
+      <p>{siteConfig.name} is a collective publishing platform for psychography journals — visual-textual records of walks that map the psyche against the geography it moves through.</p>
+      <p>each entry is a walk: a sequence of images and text, captured in place, processed through a low-resolution sensor emulation, and published as a hypertext document.</p>
+      <p>the project is open source. the content is licensed under CC BY-NC-SA 4.0. the code is MIT.</p>
+    </div>
+  </div>
+</List>
+
+<style>
+  .about-page {
+    padding-top: 2rem;
+  }
+
+  .page-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-meta);
+    margin-bottom: 1.5rem;
+  }
+
+  .about-body {
+    max-width: var(--measure);
+    font-size: var(--size-base);
+    color: var(--color-meta);
+  }
+
+  .about-body p {
+    margin-bottom: 1rem;
+  }
+</style>

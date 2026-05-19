@@ -1,0 +1,21 @@
+---
+import { getCollection } from "astro:content";
+
+export async function getStaticPaths() {
+  const walks = await getCollection("walks");
+  return walks.map((walk) => {
+    const parts = walk.id.split("/");
+    const author = parts[0];
+    const slug = parts[1];
+    return {
+      params: { author, slug },
+      props: { walk },
+    };
+  });
+}
+
+const { author, slug } = Astro.params;
+
+// Redirect to first page
+return Astro.redirect(`/walk/${author}/${slug}/page/page-001`);
+---

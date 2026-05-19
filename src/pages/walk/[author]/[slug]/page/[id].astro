@@ -1,0 +1,81 @@
+---
+import { getCollection, render } from "astro:content";
+import Reader from "../../../../../layouts/Reader.astro";
+import PageNav from "../../../../../components/reader/PageNav.astro";
+
+export async function getStaticPaths() {
+  const allPages = await getCollection("pages");
+  const walks = await getCollection("walks");
+
+  const paths = [];
+
+  for (const page of allPages) {
+    // page.id is like "test-author/test-walk/page-001"
+    const parts = page.id.split("/");
+    const author = parts[0];
+    const slug = parts[1];
+    const pageId = parts[2];
+
+    // Find sibling pages for this walk
+    const prefix = `${author}/${slug}/`;
+    const siblings = allPages
+      .filter((p) => p.id.startsWith(prefix))
+      .sort((a, b) => a.id.localeCompare(b.id));
+
+    const walk = walks.find((w) => {
+      // glob loader ID may be "test-author/test-walk/walk" or "test-author/test-walk"
+      const wParts = w.id.split("/");
+      const wAuthor = wParts[0];
+      const wSlug = wParts[1];
+      return wAuthor === author && wSlug === slug;
+    });
+
+    paths.push({
+      params: { author, slug, id: pageId },
+      props: {
+        page,
+        walk,
+        siblings,
+        walkAuthor: author,
+        walkSlug: slug,
+      },
+    });
+  }
+
+  return paths;
+}
+
+const { page, walk, siblings, walkAuthor, walkSlug } = Astro.props;
+const { id: pageId } = Astro.params;
+
+const currentIndex = siblings.findIndex((s) => s.id.endsWith(`/${pageId}`));
+const total = siblings.length;
+
+const prevPage = currentIndex > 0 ? siblings[currentIndex - 1] : null;
+const nextPage = currentIndex < total - 1 ? siblings[currentIndex + 1] : null;
+
+const prevUrl = prevPage
+  ? `/walk/${walkAuthor}/${walkSlug}/page/${prevPage.id.split("/").pop()}`
+  : null;
+const nextUrl = nextPage
+  ? `/walk/${walkAuthor}/${walkSlug}/page/${nextPage.id.split("/").pop()}`
+  : null;
+
+const { Content } = await render(page);
+
+const imagePath = `/content-images/${walkAuthor}/${walkSlug}/${page.data.image}`;
+const walkTitle = walk?.data.title ?? "untitled walk";
+---
+
+<Reader title={`${walkTitle} — ${page.data.id}`}>
+  <img class="page-image" src={imagePath} alt="" />
+  <div class="page-body">
+    <Content />
+  </div>
+  <PageNav
+    current={currentIndex + 1}
+    total={total}
+    prevUrl={prevUrl}
+    nextUrl={nextUrl}
+  />
+</Reader>

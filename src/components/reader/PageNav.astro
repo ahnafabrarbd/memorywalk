@@ -1,0 +1,43 @@
+---
+interface Props {
+  current: number;
+  total: number;
+  prevUrl: string | null;
+  nextUrl: string | null;
+}
+
+const { current, total, prevUrl, nextUrl } = Astro.props;
+const pad = (n: number) => String(n).padStart(2, "0");
+---
+
+<div class="page-nav">
+  <span>{pad(current)} / {pad(total)}</span>
+  <span class="page-nav-links">
+    {prevUrl ? <a href={prevUrl}>prev</a> : <span class="disabled">prev</span>}
+    <span class="page-nav-dot">&middot;</span>
+    {nextUrl ? <a href={nextUrl}>next</a> : <span class="disabled">next</span>}
+  </span>
+</div>
+
+<style>
+  .page-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .page-nav a {
+    color: var(--color-text);
+  }
+
+  .page-nav .disabled {
+    color: var(--color-rule);
+  }
+
+  .page-nav-dot {
+    margin: 0 0.25rem;
+  }
+</style>

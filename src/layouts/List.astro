@@ -1,0 +1,37 @@
+---
+import "../components/shared/tokens.css";
+import TopBar from "../components/list/TopBar.astro";
+import { siteConfig } from "../../site.config";
+
+interface Props {
+  title: string;
+}
+
+const { title } = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title} — {siteConfig.name}</title>
+    <style>
+      body {
+        padding: 0 1rem;
+      }
+
+      .list-content {
+        max-width: 960px;
+        margin: 0 auto;
+        padding-bottom: 4rem;
+      }
+    </style>
+  </head>
+  <body>
+    <TopBar />
+    <div class="list-content">
+      <slot />
+    </div>
+  </body>
+</html>

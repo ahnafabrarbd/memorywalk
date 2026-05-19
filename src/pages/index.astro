@@ -1,0 +1,157 @@
+---
+import List from "../layouts/List.astro";
+import { getCollection } from "astro:content";
+import { siteConfig } from "../../site.config";
+
+const walks = await getCollection("walks");
+const published = walks
+  .filter((w) => !w.data.curated)
+  .sort((a, b) => b.data.started_at.getTime() - a.data.started_at.getTime())
+  .slice(0, 5);
+const curated = walks
+  .filter((w) => w.data.curated)
+  .sort((a, b) => {
+    const aTime = a.data.curated_at?.getTime() ?? 0;
+    const bTime = b.data.curated_at?.getTime() ?? 0;
+    return bTime - aTime;
+  })
+  .slice(0, 5);
+---
+
+<List title={siteConfig.name}>
+  <div class="landing">
+    <h1 class="landing-title">{siteConfig.name}</h1>
+    <p class="landing-epigraph">{siteConfig.epigraph}</p>
+
+    <div class="landing-columns">
+      <div class="landing-col">
+        <h2 class="landing-heading">recent</h2>
+        {published.length > 0 ? (
+          <ul class="walk-list">
+            {published.map((w) => {
+              const parts = w.id.split("/");
+              return (
+                <li class="walk-row">
+                  <a href={`/walk/${parts[0]}/${parts[1]}`}>{w.data.title}</a>
+                  <span class="walk-meta">
+                    {w.data.author} &middot; {w.data.started_at.toISOString().slice(0, 10)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p class="empty">no walks yet</p>
+        )}
+      </div>
+
+      <div class="landing-col">
+        <h2 class="landing-heading">curated</h2>
+        {curated.length > 0 ? (
+          <ul class="walk-list">
+            {curated.map((w) => {
+              const parts = w.id.split("/");
+              return (
+                <li class="walk-row">
+                  <a href={`/walk/${parts[0]}/${parts[1]}`}>{w.data.title}</a>
+                  <span class="walk-meta">
+                    {w.data.author} &middot; {w.data.started_at.toISOString().slice(0, 10)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <p class="empty">none yet</p>
+        )}
+      </div>
+    </div>
+
+    <div class="landing-footer">
+      <a href="/about">about</a>
+      <span>&middot;</span>
+      <a href="/contribute">contribute</a>
+    </div>
+  </div>
+</List>
+
+<style>
+  .landing {
+    padding-top: 4rem;
+  }
+
+  .landing-title {
+    font-family: var(--font-serif);
+    font-size: var(--size-lg);
+    font-weight: normal;
+    margin-bottom: 0.5rem;
+  }
+
+  .landing-epigraph {
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+    max-width: var(--measure);
+    margin-bottom: 3rem;
+  }
+
+  .landing-columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem;
+  }
+
+  @media (max-width: 640px) {
+    .landing-columns {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+
+  .landing-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-meta);
+    margin-bottom: 1rem;
+  }
+
+  .walk-list {
+    list-style: none;
+  }
+
+  .walk-row {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .walk-row a {
+    font-size: var(--size-base);
+  }
+
+  .walk-meta {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .empty {
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .landing-footer {
+    margin-top: 4rem;
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .landing-footer a {
+    color: var(--color-text);
+  }
+</style>

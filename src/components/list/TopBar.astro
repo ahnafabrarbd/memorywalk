@@ -1,0 +1,37 @@
+---
+import { siteConfig } from "../../../site.config";
+---
+
+<nav class="topbar">
+  <a href="/">{siteConfig.name}</a>
+  <span class="topbar-sep">&middot;</span>
+  <a href="/walks">walks</a>
+  <span class="topbar-sep">&middot;</span>
+  <a href="/curated">curated</a>
+  <span class="topbar-sep">&middot;</span>
+  <a href="/nexus">nexus</a>
+  <span class="topbar-sep">&middot;</span>
+  <a href="/people">people</a>
+  <span class="topbar-sep">&middot;</span>
+  <a href="/admin">log in</a>
+</nav>
+
+<style>
+  .topbar {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .topbar a {
+    color: var(--color-text);
+  }
+
+  .topbar-sep {
+    margin: 0 0.25rem;
+  }
+</style>

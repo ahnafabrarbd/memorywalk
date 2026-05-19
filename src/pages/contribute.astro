@@ -1,0 +1,54 @@
+---
+import List from "../layouts/List.astro";
+import { siteConfig } from "../../site.config";
+---
+
+<List title="contribute">
+  <div class="contribute-page">
+    <h1 class="page-heading">contribute</h1>
+    <div class="contribute-body">
+      <h2 class="section-heading">write a walk</h2>
+      <p>go to any walk's final page. follow the link. you'll need a github account.</p>
+
+      <h2 class="section-heading">contribute to the codebase</h2>
+      {siteConfig.repoUrl ? (
+        <p>the project is open source. <a href={siteConfig.repoUrl}>view the repository</a>.</p>
+      ) : (
+        <p>the project is open source.</p>
+      )}
+    </div>
+  </div>
+</List>
+
+<style>
+  .contribute-page {
+    padding-top: 2rem;
+  }
+
+  .page-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-meta);
+    margin-bottom: 1.5rem;
+  }
+
+  .contribute-body {
+    max-width: var(--measure);
+    font-size: var(--size-base);
+    color: var(--color-meta);
+  }
+
+  .section-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-text);
+    margin-top: 1.5rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .contribute-body p {
+    margin-bottom: 1rem;
+  }
+</style>

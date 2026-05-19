@@ -1,0 +1,88 @@
+---
+import List from "../../layouts/List.astro";
+import { getCollection } from "astro:content";
+
+const walks = await getCollection("walks");
+const sorted = walks.sort(
+  (a, b) => b.data.started_at.getTime() - a.data.started_at.getTime(),
+);
+---
+
+<List title="walks">
+  <div class="walks-page">
+    <h1 class="page-heading">walks</h1>
+    {sorted.length > 0 ? (
+      <ul class="walk-list">
+        {sorted.map((w) => {
+          const parts = w.id.split("/");
+          return (
+            <li class="walk-row">
+              <a href={`/walk/${parts[0]}/${parts[1]}`}>{w.data.title}</a>
+              <span class="walk-meta">
+                {w.data.author} &middot; {w.data.started_at.toISOString().slice(0, 10)}
+                {w.data.tags.length > 0 && (
+                  <span class="walk-tags">
+                    {w.data.tags.map((t) => `#${t}`).join(" ")}
+                  </span>
+                )}
+              </span>
+              <span class="walk-summary">{w.data.summary}</span>
+            </li>
+          );
+        })}
+      </ul>
+    ) : (
+      <p class="empty">no walks yet</p>
+    )}
+  </div>
+</List>
+
+<style>
+  .walks-page {
+    padding-top: 2rem;
+  }
+
+  .page-heading {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    font-weight: normal;
+    color: var(--color-meta);
+    margin-bottom: 1.5rem;
+  }
+
+  .walk-list {
+    list-style: none;
+  }
+
+  .walk-row {
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--color-rule);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  .walk-row a {
+    font-size: var(--size-base);
+  }
+
+  .walk-meta {
+    font-family: var(--font-mono);
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .walk-tags {
+    margin-left: 0.5rem;
+  }
+
+  .walk-summary {
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+
+  .empty {
+    font-size: var(--size-sm);
+    color: var(--color-meta);
+  }
+</style>
