@@ -76,7 +76,12 @@ const isLastPage = !nextPage && (!page.data.links || page.data.links.length === 
 ---
 
 <Reader title={`${walkTitle} — ${page.data.id}`} walkSlug={walkSlug} nextPageUrl={nextUrl}>
-  {isFirstPage && <h2 class="walk-title">{walkTitle}</h2>}
+  {isFirstPage && (
+    <>
+      <h2 class="walk-title">{walkTitle}</h2>
+      <a href={`/walk/${walkSlug}/sketch`} class="sketch-link">sketch</a>
+    </>
+  )}
 
   {ipfsEnabled ? (
     <img
@@ -100,6 +105,12 @@ const isLastPage = !nextPage && (!page.data.links || page.data.links.length === 
       </div>
     )}
   </div>
+
+  {page.data.coords && (
+    <div class="geo-indicator">
+      {page.data.coords[0].toFixed(4)}, {page.data.coords[1].toFixed(4)}
+    </div>
+  )}
 
   {isLastPage && (
     <div class="walk-end">
@@ -130,6 +141,29 @@ const isLastPage = !nextPage && (!page.data.links || page.data.links.length === 
     color: var(--color-accent-red);
     border-color: var(--color-accent-red);
     text-decoration: none;
+  }
+
+  .sketch-link {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--color-accent-blue);
+    margin-bottom: 1.5rem;
+    display: inline-block;
+  }
+
+  .sketch-link:hover {
+    color: var(--color-accent-red);
+  }
+
+  .geo-indicator {
+    font-family: var(--font-display);
+    font-size: var(--size-label);
+    font-weight: 500;
+    color: var(--color-dim);
+    margin-top: 1rem;
   }
 
   .walk-end {
