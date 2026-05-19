@@ -36,6 +36,7 @@ export async function getStaticPaths() {
 
 const { page, walk, siblings, walkSlug, walkAuthor } = Astro.props;
 const { id: pageId } = Astro.params;
+const base = import.meta.env.BASE_URL;
 
 const structure = walk?.data.structure ?? "linear";
 const currentIndex = siblings.findIndex((s) => s.id.endsWith(`/${pageId}`));
@@ -45,13 +46,13 @@ const isFirstPage = currentIndex === 0;
 // Next page URL (for click-to-advance)
 const nextPage = currentIndex < total - 1 ? siblings[currentIndex + 1] : null;
 const nextUrl = nextPage
-  ? `/walk/${walkSlug}/page/${nextPage.id.split("/").pop()}`
+  ? `${base}walk/${walkSlug}/page/${nextPage.id.split("/").pop()}`
   : null;
 
 // Branching links
 const branchLinks = (page.data.links ?? []).map((linkId: string) => ({
   id: linkId,
-  url: `/walk/${walkSlug}/page/${linkId}`,
+  url: `${base}walk/${walkSlug}/page/${linkId}`,
 }));
 
 const { Content } = await render(page);
@@ -79,7 +80,7 @@ const isLastPage = !nextPage && (!page.data.links || page.data.links.length === 
   {isFirstPage && (
     <>
       <h2 class="walk-title">{walkTitle}</h2>
-      <a href={`/walk/${walkSlug}/sketch`} class="sketch-link">sketch</a>
+      <a href={`${base}walk/${walkSlug}/sketch`} class="sketch-link">sketch</a>
     </>
   )}
 

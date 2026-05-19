@@ -10,6 +10,7 @@ interface Props {
 }
 
 const { title, walkSlug, nextPageUrl } = Astro.props;
+const base = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
@@ -96,7 +97,7 @@ const { title, walkSlug, nextPageUrl } = Astro.props;
   </head>
   <body>
     <ShaderBackground />
-    <a class="walk-back" href="/walks">{siteConfig.name}</a>
+    <a class="walk-back" href={`${base}walks`}>{siteConfig.name}</a>
     <div class="reader">
       <slot />
     </div>

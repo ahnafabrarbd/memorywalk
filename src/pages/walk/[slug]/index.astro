@@ -25,6 +25,7 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params;
 const { firstPageId } = Astro.props;
+const base = import.meta.env.BASE_URL;
 
-return Astro.redirect(`/walk/${slug}/page/${firstPageId}`);
+return Astro.redirect(`${base}walk/${slug}/page/${firstPageId}`);
 ---

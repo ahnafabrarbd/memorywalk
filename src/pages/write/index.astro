@@ -5,6 +5,7 @@ import { getCollection } from "astro:content";
 // Dev-mode only: this page won't be useful in production
 // but we keep it buildable. The actual editing requires dev server.
 
+const base = import.meta.env.BASE_URL;
 const walks = await getCollection("walks");
 const walkData = walks
   .sort((a, b) => b.data.started_at.getTime() - a.data.started_at.getTime())
@@ -18,7 +19,7 @@ const walkData = walks
   <div class="write-page">
     <h1 class="page-title">write</h1>
 
-    <a href="/write/new" class="new-walk-btn">+ new walk</a>
+    <a href={`${base}write/new`} class="new-walk-btn">+ new walk</a>
 
     {walkData.length > 0 && (
       <div class="existing">
@@ -26,7 +27,7 @@ const walkData = walks
         <ul class="walk-list">
           {walkData.map((w) => (
             <li class="walk-row">
-              <a href={`/write/${w.slug}`} class="walk-title">{w.title}</a>
+              <a href={`${base}write/${w.slug}`} class="walk-title">{w.title}</a>
             </li>
           ))}
         </ul>

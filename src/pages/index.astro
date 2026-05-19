@@ -3,6 +3,7 @@ import List from "../layouts/List.astro";
 import { getCollection } from "astro:content";
 import { siteConfig } from "../../site.config";
 
+const base = import.meta.env.BASE_URL;
 const walks = await getCollection("walks");
 const recent = walks
   .sort((a, b) => b.data.started_at.getTime() - a.data.started_at.getTime())
@@ -14,7 +15,7 @@ const recent = walks
     <h1 class="landing-title">{siteConfig.name}</h1>
     <p class="landing-tagline">{siteConfig.epigraph}</p>
 
-    <a href="/write/new" class="landing-cta">+ new walk</a>
+    <a href={`${base}write/new`} class="landing-cta">+ new walk</a>
 
     <div class="recent">
       <h2 class="section-label">recent walks</h2>
@@ -25,7 +26,7 @@ const recent = walks
             const slug = parts[1];
             return (
               <li class="walk-row">
-                <a href={`/walk/${slug}`} class="walk-title">{w.data.title}</a>
+                <a href={`${base}walk/${slug}`} class="walk-title">{w.data.title}</a>
                 <span class="walk-meta">
                   {w.data.started_at.toISOString().slice(0, 10)}
                   {w.data.tags.length > 0 && (

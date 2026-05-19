@@ -2,6 +2,7 @@
 import List from "../../layouts/List.astro";
 import { getCollection } from "astro:content";
 
+const base = import.meta.env.BASE_URL;
 const walks = await getCollection("walks");
 const sorted = walks.sort(
   (a, b) => b.data.started_at.getTime() - a.data.started_at.getTime(),
@@ -53,7 +54,7 @@ const walkData = sorted.map((w) => {
           data-tags={w.tags.join(",")}
           data-structure={w.structure}
         >
-          <a href={`/walk/${w.slug}`} class="walk-title">{w.title}</a>
+          <a href={`${base}walk/${w.slug}`} class="walk-title">{w.title}</a>
           <span class="walk-meta">
             {w.date}
             {w.tags.length > 0 && (

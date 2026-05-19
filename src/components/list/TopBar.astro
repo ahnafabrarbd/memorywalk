@@ -1,13 +1,14 @@
 ---
 import { siteConfig } from "../../../site.config";
+const base = import.meta.env.BASE_URL;
 ---
 
 <nav class="topbar">
-  <a href="/" class="topbar-brand">{siteConfig.name}</a>
+  <a href={`${base}`} class="topbar-brand">{siteConfig.name}</a>
   <div class="topbar-links">
-    <a href="/walks">walks</a>
-    <a href="/nexus">nexus</a>
-    <a href="/about">about</a>
+    <a href={`${base}walks`}>walks</a>
+    <a href={`${base}nexus`}>nexus</a>
+    <a href={`${base}about`}>about</a>
   </div>
 </nav>
 

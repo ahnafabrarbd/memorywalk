@@ -1,5 +1,6 @@
 ---
 import List from "../layouts/List.astro";
+const base = import.meta.env.BASE_URL;
 ---
 
 <List title="nexus">
@@ -19,7 +20,7 @@ import List from "../layouts/List.astro";
         <span>semantic</span>
       </label>
     </div>
-    <div id="nexusMap" class="nexus-map"></div>
+    <div id="nexusMap" class="nexus-map" data-base={base}></div>
     <div id="threadsPanel" class="threads-panel" style="display:none;">
       <h2 class="threads-heading">threads</h2>
       <ul id="threadsList" class="threads-list"></ul>
@@ -106,6 +107,8 @@ import List from "../layouts/List.astro";
   import L from "leaflet";
   import "leaflet/dist/leaflet.css";
 
+  const baseUrl = document.getElementById("nexusMap")!.dataset.base || "/";
+
   const map = L.map("nexusMap", {
     zoomControl: false,
     attributionControl: false,
@@ -120,8 +123,8 @@ import List from "../layouts/List.astro";
   const temporalLines: L.Polyline[] = [];
 
   Promise.all([
-    fetch("/walks-index.json").then((r) => r.json()),
-    fetch("/collisions.json").then((r) => r.json()),
+    fetch(`${baseUrl}walks-index.json`).then((r) => r.json()),
+    fetch(`${baseUrl}collisions.json`).then((r) => r.json()),
   ]).then(([walks, collisions]) => {
     const coordMap = new Map();
     const bounds: [number, number][] = [];
@@ -139,7 +142,7 @@ import List from "../layouts/List.astro";
           stroke: false,
         })
           .on("click", () => {
-            window.open(`/walk/${walk.slug}/page/${page.id}`, "_blank");
+            window.open(`${baseUrl}walk/${walk.slug}/page/${page.id}`, "_blank");
           })
           .addTo(map);
 
@@ -172,7 +175,7 @@ import List from "../layouts/List.astro";
         const detail = [];
         if (c.shared_tags?.length) detail.push(c.shared_tags.map((t: string) => "#" + t).join(" "));
         if (c.shared_words?.length) detail.push(c.shared_words.join(", "));
-        li.innerHTML = `<a href="/walk/${c.a.walkSlug}">${c.a.walkTitle}</a> &mdash; <a href="/walk/${c.b.walkSlug}">${c.b.walkTitle}</a><br><span class="thread-detail">${detail.join(" · ")}</span>`;
+        li.innerHTML = `<a href="${baseUrl}walk/${c.a.walkSlug}">${c.a.walkTitle}</a> &mdash; <a href="${baseUrl}walk/${c.b.walkSlug}">${c.b.walkTitle}</a><br><span class="thread-detail">${detail.join(" · ")}</span>`;
         threadsList.appendChild(li);
       }
     }

@@ -2,6 +2,7 @@
 import "../../components/shared/tokens.css";
 import ShaderBackground from "../../components/shared/ShaderBackground.astro";
 import { siteConfig } from "../../../site.config";
+const base = import.meta.env.BASE_URL;
 ---
 
 <!doctype html>
@@ -267,7 +268,7 @@ import { siteConfig } from "../../../site.config";
     <ShaderBackground />
     <div class="editor">
       <div class="editor-header">
-        <a href="/write" class="back-link">back</a>
+        <a href={`${base}write`} class="back-link">back</a>
         <button class="publish-btn" id="publishBtn" disabled>publish</button>
       </div>
 
